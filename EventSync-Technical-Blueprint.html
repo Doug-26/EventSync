@@ -1,0 +1,2971 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EventSync — Full Technical Blueprint & Development Guide</title>
+    <style>
+        /* ========== PRINT & SCREEN STYLES ========== */
+        @page {
+            size: A4;
+            margin: 20mm 18mm 20mm 18mm;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+            font-size: 11pt;
+            line-height: 1.6;
+            color: #1a1a1a;
+            max-width: 210mm;
+            margin: 0 auto;
+            padding: 20mm 18mm;
+            background: #fff;
+        }
+
+        /* Cover Page */
+        .cover {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 90vh;
+            text-align: center;
+            page-break-after: always;
+        }
+        .cover h1 {
+            font-size: 36pt;
+            color: #1e3a5f;
+            margin-bottom: 8px;
+            letter-spacing: -1px;
+        }
+        .cover .subtitle {
+            font-size: 16pt;
+            color: #4a6fa5;
+            margin-bottom: 40px;
+            font-weight: 300;
+        }
+        .cover .meta {
+            font-size: 11pt;
+            color: #666;
+            line-height: 2;
+        }
+        .cover .meta strong { color: #333; }
+        .cover .logo {
+            font-size: 64pt;
+            margin-bottom: 20px;
+        }
+        .cover .divider {
+            width: 120px;
+            height: 3px;
+            background: linear-gradient(90deg, #1e3a5f, #4a6fa5);
+            margin: 24px auto;
+            border: none;
+        }
+
+        /* Table of Contents */
+        .toc {
+            page-break-after: always;
+        }
+        .toc h2 {
+            font-size: 20pt;
+            color: #1e3a5f;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #1e3a5f;
+            padding-bottom: 8px;
+        }
+        .toc ul {
+            list-style: none;
+            padding: 0;
+        }
+        .toc li {
+            padding: 6px 0;
+            border-bottom: 1px dotted #ccc;
+            display: flex;
+            justify-content: space-between;
+        }
+        .toc li.section {
+            font-weight: 700;
+            color: #1e3a5f;
+            padding-top: 14px;
+            border-bottom: none;
+            font-size: 12pt;
+        }
+        .toc li.sub {
+            padding-left: 20px;
+            font-size: 10.5pt;
+        }
+        .toc a {
+            color: inherit;
+            text-decoration: none;
+        }
+
+        /* Headings */
+        h1 { font-size: 22pt; color: #1e3a5f; margin: 30px 0 12px 0; page-break-after: avoid; }
+        h2 { font-size: 17pt; color: #1e3a5f; margin: 26px 0 10px 0; border-bottom: 2px solid #e0e7ef; padding-bottom: 6px; page-break-after: avoid; }
+        h3 { font-size: 13pt; color: #2c5282; margin: 18px 0 8px 0; page-break-after: avoid; }
+        h4 { font-size: 11.5pt; color: #3a6ea5; margin: 14px 0 6px 0; page-break-after: avoid; }
+
+        /* Paragraphs & Lists */
+        p { margin: 8px 0; }
+        ul, ol { margin: 6px 0 6px 24px; }
+        li { margin: 3px 0; }
+
+        /* Tables */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 10px 0 16px 0;
+            font-size: 10pt;
+            page-break-inside: auto;
+        }
+        thead { background: #1e3a5f; color: #fff; }
+        th {
+            padding: 8px 10px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 9.5pt;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        td {
+            padding: 7px 10px;
+            border-bottom: 1px solid #e0e7ef;
+            vertical-align: top;
+        }
+        tbody tr:nth-child(even) { background: #f7f9fc; }
+
+        /* Code */
+        code {
+            font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+            font-size: 9.5pt;
+            background: #f0f4f8;
+            padding: 1px 5px;
+            border-radius: 3px;
+            color: #c7254e;
+        }
+        pre {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 14px 16px;
+            border-radius: 6px;
+            overflow-x: auto;
+            font-size: 9pt;
+            line-height: 1.5;
+            margin: 10px 0 16px 0;
+            page-break-inside: avoid;
+        }
+        pre code {
+            background: none;
+            color: inherit;
+            padding: 0;
+        }
+
+        /* Callout boxes */
+        .callout {
+            background: #eef4fb;
+            border-left: 4px solid #4a6fa5;
+            padding: 12px 16px;
+            margin: 12px 0;
+            border-radius: 0 6px 6px 0;
+            font-size: 10.5pt;
+        }
+        .callout.warning {
+            background: #fef9e7;
+            border-left-color: #d4a017;
+        }
+        .callout.success {
+            background: #e8f8e8;
+            border-left-color: #2e7d32;
+        }
+        .callout strong { color: #1e3a5f; }
+
+        /* Section breaks */
+        .page-break { page-break-before: always; }
+
+        /* Badge */
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 8.5pt;
+            font-weight: 600;
+        }
+        .badge.mvp { background: #c8e6c9; color: #1b5e20; }
+        .badge.should { background: #fff3cd; color: #856404; }
+        .badge.nice { background: #e0e7ef; color: #4a6fa5; }
+
+        /* Architecture diagram */
+        .diagram {
+            background: #f8fafc;
+            border: 1px solid #e0e7ef;
+            padding: 16px;
+            border-radius: 8px;
+            margin: 12px 0;
+            font-family: 'Cascadia Code', 'Consolas', monospace;
+            font-size: 8.5pt;
+            line-height: 1.4;
+            white-space: pre;
+            overflow-x: auto;
+        }
+
+        /* Phase header */
+        .phase-header {
+            background: linear-gradient(135deg, #1e3a5f, #4a6fa5);
+            color: #fff;
+            padding: 14px 20px;
+            border-radius: 8px;
+            margin: 20px 0 14px 0;
+            page-break-after: avoid;
+        }
+        .phase-header h2 {
+            color: #fff;
+            border: none;
+            margin: 0;
+            padding: 0;
+            font-size: 15pt;
+        }
+        .phase-header .phase-meta {
+            font-size: 9.5pt;
+            opacity: 0.85;
+            margin-top: 4px;
+        }
+
+        /* Prompt box */
+        .prompt-box {
+            background: #f0f4f8;
+            border: 1px solid #d0d8e4;
+            border-radius: 8px;
+            padding: 16px;
+            margin: 12px 0;
+            page-break-inside: avoid;
+        }
+        .prompt-box h4 {
+            color: #1e3a5f;
+            margin-bottom: 8px;
+            font-size: 11pt;
+        }
+        .prompt-box pre {
+            margin: 8px 0 0 0;
+        }
+
+        /* Footer */
+        .doc-footer {
+            text-align: center;
+            font-size: 9pt;
+            color: #999;
+            margin-top: 40px;
+            padding-top: 16px;
+            border-top: 1px solid #e0e7ef;
+        }
+
+        @media print {
+            body { padding: 0; max-width: none; }
+            .no-print { display: none; }
+            pre { white-space: pre-wrap; word-wrap: break-word; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- ======================== COVER PAGE ======================== -->
+<div class="cover">
+    <div class="logo">📅</div>
+    <h1>EventSync</h1>
+    <div class="subtitle">Full Technical Blueprint &amp; Development Guide</div>
+    <hr class="divider">
+    <div class="meta">
+        <strong>Project Type:</strong> Full-Stack Web Application<br>
+        <strong>Frontend:</strong> Angular 20+ · Tailwind CSS · Standalone Components<br>
+        <strong>Backend:</strong> .NET 10 Web API · Vertical Slice Architecture · MediatR<br>
+        <strong>Database:</strong> SQL Server · EF Core<br>
+        <strong>Authentication:</strong> Auth0 (Free Tier)<br>
+        <strong>Hosting:</strong> Local Docker → Azure (Free Tier)<br><br>
+        <strong>Document Version:</strong> 1.0<br>
+        <strong>Date:</strong> April 18, 2026<br>
+        <strong>Author:</strong> Solo Developer + AI-Assisted Development
+    </div>
+</div>
+
+<!-- ======================== TABLE OF CONTENTS ======================== -->
+<div class="toc">
+    <h2>Table of Contents</h2>
+    <ul>
+        <li class="section">Part I — Technical Blueprint</li>
+        <li><a href="#sec1">1. Architecture Overview</a></li>
+        <li class="sub"><a href="#sec1-1">1.1 High-Level Architecture Diagram</a></li>
+        <li class="sub"><a href="#sec1-2">1.2 Vertical Slice Layered Breakdown</a></li>
+        <li class="sub"><a href="#sec1-3">1.3 Major Backend Components</a></li>
+        <li class="sub"><a href="#sec1-4">1.4 Key Design Decisions &amp; Tradeoffs</a></li>
+        <li><a href="#sec2">2. Database Schema</a></li>
+        <li class="sub"><a href="#sec2-1">2.1 Entity-Relationship Model</a></li>
+        <li class="sub"><a href="#sec2-2">2.2 Table Definitions</a></li>
+        <li class="sub"><a href="#sec2-3">2.3 Indexes &amp; Constraints</a></li>
+        <li class="sub"><a href="#sec2-4">2.4 Soft-Delete Strategy</a></li>
+        <li><a href="#sec3">3. API Endpoints</a></li>
+        <li class="sub"><a href="#sec3-1">3.1 Authentication Endpoints</a></li>
+        <li class="sub"><a href="#sec3-2">3.2 Event Endpoints</a></li>
+        <li class="sub"><a href="#sec3-3">3.3 Invite Link Endpoints</a></li>
+        <li class="sub"><a href="#sec3-4">3.4 RSVP Endpoints</a></li>
+        <li class="sub"><a href="#sec3-5">3.5 Request/Response DTO Contracts</a></li>
+        <li class="sub"><a href="#sec3-6">3.6 Unique Link Generation Logic</a></li>
+        <li><a href="#sec4">4. Angular Frontend Structure</a></li>
+        <li class="sub"><a href="#sec4-1">4.1 Project Scaffold</a></li>
+        <li class="sub"><a href="#sec4-2">4.2 Routing Structure</a></li>
+        <li class="sub"><a href="#sec4-3">4.3 State Management Approach</a></li>
+        <li class="sub"><a href="#sec4-4">4.4 Form Validation Strategy</a></li>
+        <li class="sub"><a href="#sec4-5">4.5 HTTP Interceptors</a></li>
+        <li><a href="#sec5">5. Feature List (User Stories)</a></li>
+        <li class="sub"><a href="#sec5-1">5.1 Must Have (MVP)</a></li>
+        <li class="sub"><a href="#sec5-2">5.2 Should Have</a></li>
+        <li class="sub"><a href="#sec5-3">5.3 Nice to Have</a></li>
+        <li><a href="#sec6">6. Security Plan</a></li>
+        <li><a href="#sec7">7. Optional Enhancements</a></li>
+
+        <li class="section">Part II — Development Roadmap &amp; Prompts</li>
+        <li><a href="#prompting-strategy">Prompting Strategy (How to Use These Prompts)</a></li>
+        <li><a href="#angular-standards">Angular Best Practices Reference</a></li>
+        <li><a href="#dev-setup">Local Development Setup</a></li>
+        <li><a href="#phase1">Phase 1: Project Setup &amp; Infrastructure (2 prompts)</a></li>
+        <li class="sub"><a href="#p1a">1A — Backend Scaffold</a></li>
+        <li class="sub"><a href="#p1b">1B — Frontend Scaffold</a></li>
+        <li><a href="#phase2">Phase 2: Authentication (2 prompts)</a></li>
+        <li class="sub"><a href="#p2a">2A — Backend Auth0 + JWT</a></li>
+        <li class="sub"><a href="#p2b">2B — Frontend Auth0 + Login UI</a></li>
+        <li><a href="#phase3">Phase 3: Event CRUD (3 prompts)</a></li>
+        <li class="sub"><a href="#p3a">3A — Backend Event Slices</a></li>
+        <li class="sub"><a href="#p3b">3B — Frontend Event Service + List/Create/Edit</a></li>
+        <li class="sub"><a href="#p3c">3C — Frontend EventDetail + Dashboard + Shared</a></li>
+        <li><a href="#phase4">Phase 4: Invite Links &amp; RSVP (3 prompts)</a></li>
+        <li class="sub"><a href="#p4a">4A — Backend Invite + RSVP Slices</a></li>
+        <li class="sub"><a href="#p4b">4B — Frontend Invite Link Manager + Services</a></li>
+        <li class="sub"><a href="#p4c">4C — Frontend Public RSVP Page + RSVP List</a></li>
+        <li><a href="#phase5">Phase 5: Security &amp; Polish (2 prompts)</a></li>
+        <li class="sub"><a href="#p5a">5A — Backend Security Hardening</a></li>
+        <li class="sub"><a href="#p5b">5B — Frontend Error Handling + Responsive + A11y</a></li>
+        <li><a href="#phase6">Phase 6: Dockerize (1 prompt)</a></li>
+        <li><a href="#phase7">Phase 7: Deploy to Azure (2 prompts)</a></li>
+        <li class="sub"><a href="#p7a">7A — Azure Resources + Database</a></li>
+        <li class="sub"><a href="#p7b">7B — GitHub Actions CI/CD + Auth0 Production</a></li>
+
+        <li class="section">Part III — Hosting &amp; Deployment</li>
+        <li><a href="#hosting">Hosting Comparison &amp; Recommendation</a></li>
+        <li><a href="#docker-compose">Docker Compose Structure</a></li>
+        <li><a href="#azure-setup">Azure Deployment Plan</a></li>
+    </ul>
+</div>
+
+<!-- ======================== PART I: TECHNICAL BLUEPRINT ======================== -->
+
+<h1 class="page-break">Part I — Technical Blueprint</h1>
+
+<!-- Section 1 -->
+<h2 id="sec1">1. Architecture Overview</h2>
+
+<h3 id="sec1-1">1.1 High-Level Architecture Diagram</h3>
+<div class="diagram">
+┌─────────────────────────────────────────────────────────────────┐
+│                        CLIENTS                                  │
+│  ┌──────────────┐   ┌──────────────┐   ┌──────────────────┐    │
+│  │ Browser (SPA)│   │ Mobile (PWA) │   │ Public RSVP Page │    │
+│  └──────┬───────┘   └──────┬───────┘   └────────┬─────────┘    │
+│         │                  │                     │              │
+│         └──────────────────┼─────────────────────┘              │
+│                            │ HTTPS                              │
+├────────────────────────────┼────────────────────────────────────┤
+│                     ┌──────▼───────┐                            │
+│                     │    Nginx     │  (Reverse Proxy)            │
+│                     │   (Docker)   │                             │
+│                     └──────┬───────┘                             │
+│              ┌─────────────┼─────────────┐                      │
+│        ┌─────▼─────┐             ┌───────▼────────┐             │
+│        │  Angular   │             │  .NET 10 API   │             │
+│        │  (Docker)  │             │  (Docker)      │             │
+│        └───────────┘             └───────┬────────┘             │
+│                                          │                      │
+│                            ┌─────────────┼──────────┐           │
+│                      ┌─────▼────┐  ┌─────▼─────┐   │           │
+│                      │SQL Server│  │   Auth0    │   │           │
+│                      │ (Docker) │  │ (External) │   │           │
+│                      └──────────┘  └───────────┘   │           │
+│                                                     │           │
+│                                    ┌────────────────▼──┐        │
+│                                    │  SignalR Hub       │        │
+│                                    │  (WebSocket,       │        │
+│                                    │   same API proc)   │        │
+│                                    └───────────────────┘        │
+├─────────────────────────────────────────────────────────────────┤
+│                     Docker Compose                              │
+└─────────────────────────────────────────────────────────────────┘</div>
+
+<h3 id="sec1-2">1.2 Vertical Slice Layered Breakdown</h3>
+<p>Instead of traditional horizontal layers (Controllers → Services → Repositories), each <strong>feature</strong> contains its own slice through all layers:</p>
+
+<table>
+    <thead>
+        <tr><th>Concern</th><th>Location</th><th>Responsibility</th></tr>
+    </thead>
+    <tbody>
+        <tr><td><strong>Presentation</strong></td><td>Angular SPA (standalone components)</td><td>UI rendering, forms, routing, HTTP calls</td></tr>
+        <tr><td><strong>API Endpoints</strong></td><td><code>Features/{Feature}/{Action}.cs</code></td><td>Minimal API endpoints, request validation</td></tr>
+        <tr><td><strong>Business Logic</strong></td><td><code>Features/{Feature}/{Action}Handler.cs</code></td><td>Use-case orchestration via MediatR</td></tr>
+        <tr><td><strong>Data Access</strong></td><td><code>Features/{Feature}/{Action}Handler.cs</code> + <code>Data/AppDbContext.cs</code></td><td>EF Core queries inside handlers</td></tr>
+        <tr><td><strong>Database</strong></td><td>SQL Server</td><td>Persistent storage, enforced constraints</td></tr>
+        <tr><td><strong>Cross-cutting</strong></td><td><code>Common/</code> folder</td><td>Auth middleware, exception handling, logging, CORS</td></tr>
+    </tbody>
+</table>
+
+<h3 id="sec1-3">1.3 Major Backend Components</h3>
+<table>
+    <thead>
+        <tr><th>Component</th><th>Responsibility</th></tr>
+    </thead>
+    <tbody>
+        <tr><td><code>Program.cs</code></td><td>App bootstrap, DI registration, middleware pipeline</td></tr>
+        <tr><td><code>Data/AppDbContext.cs</code></td><td>EF Core DbContext, entity configurations</td></tr>
+        <tr><td><code>Data/Entities/</code></td><td>Domain entities (User, Event, RSVP, InviteLink, EventType)</td></tr>
+        <tr><td><code>Features/Auth/</code></td><td>Auth0 callback, token validation, user profile sync</td></tr>
+        <tr><td><code>Features/Events/</code></td><td>CRUD for events, list with pagination/filtering</td></tr>
+        <tr><td><code>Features/InviteLinks/</code></td><td>Generate/validate unique invite tokens</td></tr>
+        <tr><td><code>Features/RSVPs/</code></td><td>Submit RSVP (public), list RSVPs (authenticated)</td></tr>
+        <tr><td><code>Common/Behaviors/</code></td><td>MediatR pipeline behaviors (validation, logging)</td></tr>
+        <tr><td><code>Common/Middleware/</code></td><td>Global exception handler, rate limiting</td></tr>
+        <tr><td><code>Hubs/RsvpHub.cs</code></td><td>SignalR hub for real-time RSVP updates (optional enhancement)</td></tr>
+    </tbody>
+</table>
+
+<h3 id="sec1-4">1.4 Key Design Decisions &amp; Tradeoffs</h3>
+<table>
+    <thead>
+        <tr><th>Decision</th><th>Chose</th><th>Over</th><th>Rationale</th></tr>
+    </thead>
+    <tbody>
+        <tr><td>Architecture</td><td>Vertical Slice</td><td>Clean Architecture</td><td>Solo dev + AI: less boilerplate, features are self-contained, easier to generate</td></tr>
+        <tr><td>State Mgmt</td><td>Signals + Services</td><td>NgRx</td><td>App state is simple — no complex cross-feature state sharing needed</td></tr>
+        <tr><td>Auth</td><td>Auth0</td><td>ASP.NET Identity</td><td>Free tier, social logins OOTB, less code to maintain, handles OAuth complexity</td></tr>
+        <tr><td>UI</td><td>Tailwind CSS</td><td>Angular Material</td><td>Full design control, smaller bundle, no opinionated component library to fight</td></tr>
+        <tr><td>Mapping</td><td>Manual / Mapster</td><td>AutoMapper</td><td>Simpler debugging, compile-time safety, less magic</td></tr>
+        <tr><td>API Style</td><td>Minimal APIs</td><td>Controllers</td><td>Less ceremony for Vertical Slice pattern</td></tr>
+        <tr><td>Token Format</td><td>Base64Url(32 random bytes)</td><td>GUID</td><td>GUIDs are guessable (sequential); cryptographic random is not</td></tr>
+    </tbody>
+</table>
+
+<div class="callout">
+    <strong>Why Vertical Slice?</strong> Each feature (e.g., "Create Event") is a self-contained unit with its own endpoint, handler, validator, and DTO. This makes it extremely AI-friendly — you can generate an entire feature by describing a single use case, without needing to touch 5 different horizontal layer files.
+</div>
+
+<!-- Section 2 -->
+<h2 id="sec2" class="page-break">2. Database Schema</h2>
+
+<h3 id="sec2-1">2.1 Entity-Relationship Model</h3>
+<div class="diagram">
+┌───────────┐       ┌─────────────┐       ┌───────────┐
+│   Users   │1─────*│   Events    │1─────*│InviteLinks│
+└───────────┘       └──────┬──────┘       └───────────┘
+                           │1
+                           │
+                           *
+                    ┌──────┴──────┐
+                    │    RSVPs    │
+                    └─────────────┘
+
+┌─────────────┐
+│ EventTypes  │1─────* Events
+└─────────────┘</div>
+
+<h3 id="sec2-2">2.2 Table Definitions</h3>
+
+<h4>Users</h4>
+<table>
+    <thead>
+        <tr><th>Column</th><th>Type</th><th>Constraints</th><th>Notes</th></tr>
+    </thead>
+    <tbody>
+        <tr><td><code>Id</code></td><td><code>uniqueidentifier</code></td><td>PK, default <code>NEWSEQUENTIALID()</code></td><td>Internal ID</td></tr>
+        <tr><td><code>Auth0Id</code></td><td><code>nvarchar(128)</code></td><td>UNIQUE, NOT NULL</td><td>Auth0 subject (<code>sub</code>) claim</td></tr>
+        <tr><td><code>Email</code></td><td><code>nvarchar(256)</code></td><td>NOT NULL</td><td>From Auth0 profile</td></tr>
+        <tr><td><code>DisplayName</code></td><td><code>nvarchar(100)</code></td><td>NOT NULL</td><td></td></tr>
+        <tr><td><code>AvatarUrl</code></td><td><code>nvarchar(512)</code></td><td>NULLABLE</td><td>Profile picture URL</td></tr>
+        <tr><td><code>CreatedAt</code></td><td><code>datetime2</code></td><td>NOT NULL, default <code>GETUTCDATE()</code></td><td></td></tr>
+        <tr><td><code>UpdatedAt</code></td><td><code>datetime2</code></td><td>NULLABLE</td><td></td></tr>
+        <tr><td><code>IsDeleted</code></td><td><code>bit</code></td><td>NOT NULL, default <code>0</code></td><td>Soft delete flag</td></tr>
+    </tbody>
+</table>
+
+<h4>EventTypes</h4>
+<table>
+    <thead>
+        <tr><th>Column</th><th>Type</th><th>Constraints</th></tr>
+    </thead>
+    <tbody>
+        <tr><td><code>Id</code></td><td><code>int</code></td><td>PK, IDENTITY</td></tr>
+        <tr><td><code>Name</code></td><td><code>nvarchar(50)</code></td><td>UNIQUE, NOT NULL</td></tr>
+        <tr><td><code>Icon</code></td><td><code>nvarchar(50)</code></td><td>NULLABLE (e.g., emoji or icon class)</td></tr>
+    </tbody>
+</table>
+<p><strong>Seed data:</strong> Seminar, Meeting, Gathering, Anniversary, Birthday, Workshop, Conference, Other</p>
+
+<h4>Events</h4>
+<table>
+    <thead>
+        <tr><th>Column</th><th>Type</th><th>Constraints</th></tr>
+    </thead>
+    <tbody>
+        <tr><td><code>Id</code></td><td><code>uniqueidentifier</code></td><td>PK, default <code>NEWSEQUENTIALID()</code></td></tr>
+        <tr><td><code>OrganizerId</code></td><td><code>uniqueidentifier</code></td><td>FK → Users.Id, NOT NULL</td></tr>
+        <tr><td><code>EventTypeId</code></td><td><code>int</code></td><td>FK → EventTypes.Id, NOT NULL</td></tr>
+        <tr><td><code>Title</code></td><td><code>nvarchar(200)</code></td><td>NOT NULL</td></tr>
+        <tr><td><code>Description</code></td><td><code>nvarchar(2000)</code></td><td>NULLABLE</td></tr>
+        <tr><td><code>Location</code></td><td><code>nvarchar(300)</code></td><td>NULLABLE</td></tr>
+        <tr><td><code>IsVirtual</code></td><td><code>bit</code></td><td>NOT NULL, default <code>0</code></td></tr>
+        <tr><td><code>MeetingUrl</code></td><td><code>nvarchar(512)</code></td><td>NULLABLE</td></tr>
+        <tr><td><code>StartDate</code></td><td><code>datetime2</code></td><td>NOT NULL</td></tr>
+        <tr><td><code>EndDate</code></td><td><code>datetime2</code></td><td>NULLABLE</td></tr>
+        <tr><td><code>MaxAttendees</code></td><td><code>int</code></td><td>NULLABLE (null = unlimited)</td></tr>
+        <tr><td><code>CoverImageUrl</code></td><td><code>nvarchar(512)</code></td><td>NULLABLE</td></tr>
+        <tr><td><code>CreatedAt</code></td><td><code>datetime2</code></td><td>NOT NULL</td></tr>
+        <tr><td><code>UpdatedAt</code></td><td><code>datetime2</code></td><td>NULLABLE</td></tr>
+        <tr><td><code>IsDeleted</code></td><td><code>bit</code></td><td>NOT NULL, default <code>0</code></td></tr>
+        <tr><td><code>IsCancelled</code></td><td><code>bit</code></td><td>NOT NULL, default <code>0</code></td></tr>
+    </tbody>
+</table>
+
+<h4>InviteLinks</h4>
+<table>
+    <thead>
+        <tr><th>Column</th><th>Type</th><th>Constraints</th></tr>
+    </thead>
+    <tbody>
+        <tr><td><code>Id</code></td><td><code>uniqueidentifier</code></td><td>PK</td></tr>
+        <tr><td><code>EventId</code></td><td><code>uniqueidentifier</code></td><td>FK → Events.Id, NOT NULL</td></tr>
+        <tr><td><code>Token</code></td><td><code>nvarchar(64)</code></td><td>UNIQUE, NOT NULL</td></tr>
+        <tr><td><code>ExpiresAt</code></td><td><code>datetime2</code></td><td>NULLABLE (null = never expires)</td></tr>
+        <tr><td><code>MaxUses</code></td><td><code>int</code></td><td>NULLABLE (null = unlimited)</td></tr>
+        <tr><td><code>UseCount</code></td><td><code>int</code></td><td>NOT NULL, default <code>0</code></td></tr>
+        <tr><td><code>IsActive</code></td><td><code>bit</code></td><td>NOT NULL, default <code>1</code></td></tr>
+        <tr><td><code>CreatedAt</code></td><td><code>datetime2</code></td><td>NOT NULL</td></tr>
+    </tbody>
+</table>
+
+<div class="callout">
+    <strong>Token generation:</strong> <code>Convert.ToBase64String(RandomNumberGenerator.GetBytes(32))</code> URL-safe encoded — produces a 43-character cryptographically random string that is impossible to guess.
+</div>
+
+<h4>RSVPs</h4>
+<table>
+    <thead>
+        <tr><th>Column</th><th>Type</th><th>Constraints</th></tr>
+    </thead>
+    <tbody>
+        <tr><td><code>Id</code></td><td><code>uniqueidentifier</code></td><td>PK</td></tr>
+        <tr><td><code>EventId</code></td><td><code>uniqueidentifier</code></td><td>FK → Events.Id, NOT NULL</td></tr>
+        <tr><td><code>InviteLinkId</code></td><td><code>uniqueidentifier</code></td><td>FK → InviteLinks.Id, NULLABLE</td></tr>
+        <tr><td><code>GuestName</code></td><td><code>nvarchar(100)</code></td><td>NOT NULL</td></tr>
+        <tr><td><code>GuestEmail</code></td><td><code>nvarchar(256)</code></td><td>NULLABLE</td></tr>
+        <tr><td><code>Status</code></td><td><code>tinyint</code></td><td>NOT NULL (0=Pending, 1=Going, 2=NotGoing, 3=Maybe)</td></tr>
+        <tr><td><code>Note</code></td><td><code>nvarchar(500)</code></td><td>NULLABLE</td></tr>
+        <tr><td><code>RespondedAt</code></td><td><code>datetime2</code></td><td>NOT NULL</td></tr>
+        <tr><td><code>UpdatedAt</code></td><td><code>datetime2</code></td><td>NULLABLE</td></tr>
+        <tr><td><code>IpAddress</code></td><td><code>nvarchar(45)</code></td><td>NULLABLE (for rate limiting)</td></tr>
+    </tbody>
+</table>
+
+<h3 id="sec2-3">2.3 Indexes &amp; Constraints</h3>
+<table>
+    <thead>
+        <tr><th>Table</th><th>Columns</th><th>Type</th><th>Purpose</th></tr>
+    </thead>
+    <tbody>
+        <tr><td>Users</td><td><code>Auth0Id</code></td><td>Unique</td><td>Fast lookup on login</td></tr>
+        <tr><td>Users</td><td><code>Email</code></td><td>Non-clustered</td><td>Search</td></tr>
+        <tr><td>Events</td><td><code>OrganizerId, IsDeleted</code></td><td>Non-clustered</td><td>Dashboard queries</td></tr>
+        <tr><td>Events</td><td><code>StartDate</code></td><td>Non-clustered</td><td>Date-range filtering</td></tr>
+        <tr><td>InviteLinks</td><td><code>Token</code></td><td>Unique</td><td>Link resolution</td></tr>
+        <tr><td>InviteLinks</td><td><code>EventId</code></td><td>Non-clustered</td><td>Foreign key lookup</td></tr>
+        <tr><td>RSVPs</td><td><code>EventId, Status</code></td><td>Non-clustered</td><td>RSVP counts by status</td></tr>
+        <tr><td>RSVPs</td><td><code>GuestEmail, EventId</code></td><td>Unique (filtered, where GuestEmail IS NOT NULL)</td><td>Prevent duplicate RSVPs per email</td></tr>
+    </tbody>
+</table>
+
+<h3 id="sec2-4">2.4 Soft-Delete Strategy</h3>
+<ul>
+    <li><code>IsDeleted</code> column on <code>Users</code> and <code>Events</code></li>
+    <li>Global query filter in EF Core: <code>.HasQueryFilter(e =&gt; !e.IsDeleted)</code></li>
+    <li>Cascade behavior: Soft-deleting an event does NOT soft-delete RSVPs (they are filtered by event joins)</li>
+</ul>
+
+<!-- Section 3 -->
+<h2 id="sec3" class="page-break">3. API Endpoints</h2>
+<p><strong>Base URL:</strong> <code>/api/v1</code></p>
+
+<h3 id="sec3-1">3.1 Authentication Endpoints</h3>
+<table>
+    <thead>
+        <tr><th>Method</th><th>Route</th><th>Auth</th><th>Description</th></tr>
+    </thead>
+    <tbody>
+        <tr><td><code>GET</code></td><td><code>/auth/profile</code></td><td>Bearer</td><td>Get current user profile (synced from Auth0)</td></tr>
+        <tr><td><code>PUT</code></td><td><code>/auth/profile</code></td><td>Bearer</td><td>Update display name / avatar</td></tr>
+    </tbody>
+</table>
+<p>Auth0 handles login/signup/logout via the Angular SDK — the API only validates JWTs.</p>
+
+<h3 id="sec3-2">3.2 Event Endpoints</h3>
+<table>
+    <thead>
+        <tr><th>Method</th><th>Route</th><th>Auth</th><th>Request Body / Query</th><th>Response</th></tr>
+    </thead>
+    <tbody>
+        <tr><td><code>POST</code></td><td><code>/events</code></td><td>Bearer</td><td><code>CreateEventRequest</code></td><td><code>EventDto</code> (201)</td></tr>
+        <tr><td><code>GET</code></td><td><code>/events</code></td><td>Bearer</td><td><code>?page=1&amp;pageSize=10&amp;search=&amp;typeId=&amp;sortBy=date&amp;sortDir=asc</code></td><td><code>PagedResult&lt;EventSummaryDto&gt;</code></td></tr>
+        <tr><td><code>GET</code></td><td><code>/events/{id}</code></td><td>Bearer</td><td>—</td><td><code>EventDetailDto</code></td></tr>
+        <tr><td><code>PUT</code></td><td><code>/events/{id}</code></td><td>Bearer</td><td><code>UpdateEventRequest</code></td><td><code>EventDto</code></td></tr>
+        <tr><td><code>DELETE</code></td><td><code>/events/{id}</code></td><td>Bearer</td><td>—</td><td>204 (soft delete)</td></tr>
+        <tr><td><code>PATCH</code></td><td><code>/events/{id}/cancel</code></td><td>Bearer</td><td>—</td><td>204</td></tr>
+    </tbody>
+</table>
+
+<h3 id="sec3-3">3.3 Invite Link Endpoints</h3>
+<table>
+    <thead>
+        <tr><th>Method</th><th>Route</th><th>Auth</th><th>Request</th><th>Response</th></tr>
+    </thead>
+    <tbody>
+        <tr><td><code>POST</code></td><td><code>/events/{id}/invite-links</code></td><td>Bearer</td><td><code>CreateInviteLinkRequest</code> (optional: expiresAt, maxUses)</td><td><code>InviteLinkDto</code> with full URL</td></tr>
+        <tr><td><code>GET</code></td><td><code>/events/{id}/invite-links</code></td><td>Bearer</td><td>—</td><td><code>List&lt;InviteLinkDto&gt;</code></td></tr>
+        <tr><td><code>DELETE</code></td><td><code>/invite-links/{linkId}</code></td><td>Bearer</td><td>—</td><td>204 (deactivate)</td></tr>
+        <tr><td><code>GET</code></td><td><code>/invite/{token}</code></td><td><strong>Public</strong></td><td>—</td><td><code>PublicEventDto</code></td></tr>
+    </tbody>
+</table>
+
+<h3 id="sec3-4">3.4 RSVP Endpoints</h3>
+<table>
+    <thead>
+        <tr><th>Method</th><th>Route</th><th>Auth</th><th>Request</th><th>Response</th></tr>
+    </thead>
+    <tbody>
+        <tr><td><code>POST</code></td><td><code>/invite/{token}/rsvp</code></td><td><strong>Public</strong></td><td><code>SubmitRsvpRequest</code> { guestName, guestEmail?, status, note? }</td><td><code>RsvpConfirmationDto</code> (201)</td></tr>
+        <tr><td><code>GET</code></td><td><code>/events/{id}/rsvps</code></td><td>Bearer</td><td><code>?status=&amp;page=&amp;pageSize=</code></td><td><code>PagedResult&lt;RsvpDto&gt;</code></td></tr>
+        <tr><td><code>GET</code></td><td><code>/events/{id}/rsvps/summary</code></td><td>Bearer</td><td>—</td><td><code>RsvpSummaryDto</code> { going, notGoing, maybe, total }</td></tr>
+    </tbody>
+</table>
+
+<h3 id="sec3-5">3.5 Request/Response DTO Contracts</h3>
+
+<h4>CreateEventRequest</h4>
+<pre><code>title:          string   (required, max 200)
+description:    string?  (max 2000)
+eventTypeId:    int      (required)
+location:       string?  (max 300)
+isVirtual:      bool
+meetingUrl:     string?  (valid URL)
+startDate:      datetime (required, must be future)
+endDate:        datetime? (must be after startDate)
+maxAttendees:   int?     (min 1)</code></pre>
+
+<h4>EventDetailDto</h4>
+<pre><code>id, title, description,
+eventType       { id, name, icon },
+location, isVirtual, meetingUrl,
+startDate, endDate, maxAttendees,
+coverImageUrl, isCancelled,
+organizer       { displayName, avatarUrl },
+rsvpSummary     { going, notGoing, maybe, total },
+inviteLinks     [ { id, token, url, expiresAt, isActive, useCount } ],
+createdAt</code></pre>
+
+<h4>PublicEventDto (stripped-down, no sensitive data)</h4>
+<pre><code>title, description, eventType, location, isVirtual,
+startDate, endDate, organizerName, coverImageUrl, isCancelled</code></pre>
+
+<h4>PagedResult&lt;T&gt;</h4>
+<pre><code>items:      T[]
+page:       int
+pageSize:   int
+totalCount: int
+totalPages: int</code></pre>
+
+<h3 id="sec3-6">3.6 Unique Link Generation Logic</h3>
+<ol>
+    <li>On <code>POST /events/{id}/invite-links</code>, generate token: <code>RandomNumberGenerator.GetBytes(32)</code> → Base64Url encode → 43 chars</li>
+    <li>Store in <code>InviteLinks</code> table with optional expiry and max uses</li>
+    <li>Return full URL: <code>{frontendBaseUrl}/rsvp/{token}</code></li>
+    <li>On <code>GET /invite/{token}</code>, validate: exists, <code>IsActive</code>, not expired, use count within limit</li>
+    <li>On <code>POST /invite/{token}/rsvp</code>, increment <code>UseCount</code></li>
+</ol>
+
+<!-- Section 4 -->
+<h2 id="sec4" class="page-break">4. Angular Frontend Structure</h2>
+
+<h3 id="sec4-1">4.1 Project Scaffold (Standalone Components, Signal-based)</h3>
+<pre><code>src/
+├── app/
+│   ├── app.component.ts              // Root component
+│   ├── app.config.ts                 // Application config (providers)
+│   ├── app.routes.ts                 // Top-level routes
+│   │
+│   ├── core/                         // Singleton services, guards, interceptors
+│   │   ├── auth/
+│   │   │   ├── auth.guard.ts
+│   │   │   ├── auth.interceptor.ts   // Attach Bearer token
+│   │   │   └── auth.service.ts       // Auth0 Angular SDK wrapper
+│   │   ├── api/
+│   │   │   ├── api.service.ts        // Base HTTP service
+│   │   │   ├── event.service.ts
+│   │   │   ├── rsvp.service.ts
+│   │   │   └── invite-link.service.ts
+│   │   ├── models/                   // TypeScript interfaces matching DTOs
+│   │   │   ├── event.model.ts
+│   │   │   ├── rsvp.model.ts
+│   │   │   └── paged-result.model.ts
+│   │   └── error/
+│   │       └── global-error-handler.ts
+│   │
+│   ├── shared/                       // Reusable UI components
+│   │   ├── components/
+│   │   │   ├── page-header/
+│   │   │   ├── empty-state/
+│   │   │   ├── loading-spinner/
+│   │   │   ├── confirm-dialog/
+│   │   │   ├── pagination/
+│   │   │   └── status-badge/
+│   │   ├── directives/
+│   │   └── pipes/
+│   │       ├── relative-date.pipe.ts
+│   │       └── rsvp-status.pipe.ts
+│   │
+│   ├── features/                     // Lazy-loaded feature areas
+│   │   ├── auth/
+│   │   │   ├── login/
+│   │   │   │   └── login.component.ts
+│   │   │   └── auth-callback/
+│   │   │       └── auth-callback.component.ts
+│   │   │
+│   │   ├── dashboard/
+│   │   │   ├── dashboard.routes.ts
+│   │   │   ├── dashboard.component.ts
+│   │   │   └── event-card/
+│   │   │       └── event-card.component.ts
+│   │   │
+│   │   ├── events/
+│   │   │   ├── events.routes.ts
+│   │   │   ├── create-event/
+│   │   │   │   └── create-event.component.ts
+│   │   │   ├── edit-event/
+│   │   │   │   └── edit-event.component.ts
+│   │   │   ├── event-detail/
+│   │   │   │   ├── event-detail.component.ts
+│   │   │   │   ├── rsvp-list/
+│   │   │   │   │   └── rsvp-list.component.ts
+│   │   │   │   └── invite-link-manager/
+│   │   │   │       └── invite-link-manager.component.ts
+│   │   │   └── event-list/
+│   │   │       └── event-list.component.ts
+│   │   │
+│   │   └── public-rsvp/              // NO auth required
+│   │       ├── public-rsvp.routes.ts
+│   │       ├── rsvp-page/
+│   │       │   └── rsvp-page.component.ts
+│   │       └── rsvp-confirmation/
+│   │           └── rsvp-confirmation.component.ts
+│   │
+│   └── layout/
+│       ├── header/
+│       │   └── header.component.ts
+│       ├── sidebar/
+│       │   └── sidebar.component.ts
+│       └── footer/
+│           └── footer.component.ts
+│
+├── environments/
+│   ├── environment.ts
+│   └── environment.prod.ts
+├── styles.css                        // Tailwind imports
+└── index.html</code></pre>
+
+<h3 id="sec4-2">4.2 Routing Structure</h3>
+<table>
+    <thead>
+        <tr><th>Route</th><th>Component</th><th>Loading</th><th>Guard</th></tr>
+    </thead>
+    <tbody>
+        <tr><td><code>/</code></td><td>Redirect to <code>/dashboard</code></td><td>—</td><td>—</td></tr>
+        <tr><td><code>/login</code></td><td>LoginComponent</td><td>Eager</td><td>None</td></tr>
+        <tr><td><code>/auth/callback</code></td><td>AuthCallbackComponent</td><td>Eager</td><td>None</td></tr>
+        <tr><td><code>/dashboard</code></td><td>DashboardComponent</td><td>Lazy</td><td>AuthGuard</td></tr>
+        <tr><td><code>/events</code></td><td>EventListComponent</td><td>Lazy</td><td>AuthGuard</td></tr>
+        <tr><td><code>/events/create</code></td><td>CreateEventComponent</td><td>Lazy</td><td>AuthGuard</td></tr>
+        <tr><td><code>/events/:id</code></td><td>EventDetailComponent</td><td>Lazy</td><td>AuthGuard</td></tr>
+        <tr><td><code>/events/:id/edit</code></td><td>EditEventComponent</td><td>Lazy</td><td>AuthGuard</td></tr>
+        <tr><td><code>/rsvp/:token</code></td><td>RsvpPageComponent</td><td>Lazy</td><td><strong>No guard</strong></td></tr>
+        <tr><td><code>/rsvp/:token/confirmed</code></td><td>RsvpConfirmationComponent</td><td>Lazy</td><td><strong>No guard</strong></td></tr>
+    </tbody>
+</table>
+
+<h3 id="sec4-3">4.3 State Management Approach</h3>
+<p><strong>Angular Signals + Services</strong> — no NgRx (overkill for this app's complexity):</p>
+<ul>
+    <li>Each feature service holds reactive state using <code>signal()</code> and <code>computed()</code></li>
+    <li><code>EventService</code> exposes signals: <code>events</code>, <code>loading</code>, <code>error</code></li>
+    <li><code>toSignal()</code> from <code>@angular/core/rxjs-interop</code> bridges HTTP Observables into signals</li>
+    <li>For real-time RSVP updates, SignalR messages update signal values directly</li>
+</ul>
+
+<h3 id="sec4-4">4.4 Form Validation Strategy</h3>
+<ul>
+    <li><strong>Reactive Forms</strong> with typed <code>FormGroup</code> (Angular typed forms)</li>
+    <li>Custom validators for: future date, URL format, max attendees ≥ 1</li>
+    <li>Error messages displayed inline via shared <code>ValidationMessageComponent</code></li>
+    <li>Accessibility: <code>aria-describedby</code> for error messages, proper <code>&lt;label&gt;</code> associations</li>
+</ul>
+
+<h3 id="sec4-5">4.5 HTTP Interceptors</h3>
+<ul>
+    <li><strong><code>authInterceptor</code></strong> (functional): injects Auth0 access token on requests to the API base URL</li>
+    <li><strong><code>errorInterceptor</code></strong>: catches 401 (redirect to login), 403 (forbidden), 5xx (toast notification)</li>
+</ul>
+
+<!-- Section 5 -->
+<h2 id="sec5" class="page-break">5. Feature List (User Stories)</h2>
+
+<h3 id="sec5-1">5.1 Must Have (MVP)</h3>
+<table>
+    <thead>
+        <tr><th>#</th><th>User Story</th><th>Priority</th></tr>
+    </thead>
+    <tbody>
+        <tr><td>1</td><td>As an <strong>organizer</strong>, I want to <strong>sign up / log in via Auth0</strong>, so that my events are tied to my account.</td><td><span class="badge mvp">MVP</span></td></tr>
+        <tr><td>2</td><td>As an <strong>organizer</strong>, I want to <strong>create an event</strong> with title, description, type, date, location, so that I can plan a gathering.</td><td><span class="badge mvp">MVP</span></td></tr>
+        <tr><td>3</td><td>As an <strong>organizer</strong>, I want to <strong>view a list of my events</strong> with search and filtering, so that I can manage them easily.</td><td><span class="badge mvp">MVP</span></td></tr>
+        <tr><td>4</td><td>As an <strong>organizer</strong>, I want to <strong>view event details</strong> including RSVP summary, so that I can monitor attendance.</td><td><span class="badge mvp">MVP</span></td></tr>
+        <tr><td>5</td><td>As an <strong>organizer</strong>, I want to <strong>edit or cancel an event</strong>, so that I can update details or call it off.</td><td><span class="badge mvp">MVP</span></td></tr>
+        <tr><td>6</td><td>As an <strong>organizer</strong>, I want to <strong>generate a unique shareable invite link</strong> for my event, so that I can send it to people.</td><td><span class="badge mvp">MVP</span></td></tr>
+        <tr><td>7</td><td>As an <strong>organizer</strong>, I want to <strong>view the full RSVP list</strong> with each guest's name, status, and note, so that I can plan accordingly.</td><td><span class="badge mvp">MVP</span></td></tr>
+        <tr><td>8</td><td>As a <strong>guest</strong>, I want to <strong>open an invite link and see event details</strong> without logging in, so that I can decide whether to attend.</td><td><span class="badge mvp">MVP</span></td></tr>
+        <tr><td>9</td><td>As a <strong>guest</strong>, I want to <strong>submit my RSVP</strong> (Going / Not Going / Maybe) with my name and an optional note, so that the organizer knows my response.</td><td><span class="badge mvp">MVP</span></td></tr>
+        <tr><td>10</td><td>As a <strong>guest</strong>, I want to <strong>see a confirmation page</strong> after submitting my RSVP, so that I know it was recorded.</td><td><span class="badge mvp">MVP</span></td></tr>
+        <tr><td>11</td><td>As an <strong>organizer</strong>, I want to <strong>soft-delete an event</strong>, so that it's removed from my view but data is preserved.</td><td><span class="badge mvp">MVP</span></td></tr>
+    </tbody>
+</table>
+
+<h3 id="sec5-2">5.2 Should Have</h3>
+<table>
+    <thead>
+        <tr><th>#</th><th>User Story</th><th>Priority</th></tr>
+    </thead>
+    <tbody>
+        <tr><td>12</td><td>As an <strong>organizer</strong>, I want to <strong>set an expiration date on invite links</strong>, so that they can't be used after a deadline.</td><td><span class="badge should">SHOULD</span></td></tr>
+        <tr><td>13</td><td>As an <strong>organizer</strong>, I want to <strong>set a maximum number of uses</strong> on an invite link, so that I can limit responses.</td><td><span class="badge should">SHOULD</span></td></tr>
+        <tr><td>14</td><td>As an <strong>organizer</strong>, I want to <strong>deactivate an invite link</strong>, so that no more RSVPs come through it.</td><td><span class="badge should">SHOULD</span></td></tr>
+        <tr><td>15</td><td>As an <strong>organizer</strong>, I want to <strong>paginate and filter the RSVP list</strong> by status, so that I can focus on specific groups.</td><td><span class="badge should">SHOULD</span></td></tr>
+        <tr><td>16</td><td>As a <strong>guest</strong>, I want to <strong>update my RSVP</strong> if I change my mind (identified by email), so that the organizer has accurate data.</td><td><span class="badge should">SHOULD</span></td></tr>
+        <tr><td>17</td><td>As an <strong>organizer</strong>, I want to <strong>see my dashboard</strong> with upcoming events and RSVP stats at a glance, so that I have a quick overview.</td><td><span class="badge should">SHOULD</span></td></tr>
+        <tr><td>18</td><td>As any <strong>user</strong>, I want the <strong>app to be mobile-responsive</strong>, so that I can use it on any device.</td><td><span class="badge should">SHOULD</span></td></tr>
+    </tbody>
+</table>
+
+<h3 id="sec5-3">5.3 Nice to Have</h3>
+<table>
+    <thead>
+        <tr><th>#</th><th>User Story</th><th>Priority</th></tr>
+    </thead>
+    <tbody>
+        <tr><td>19</td><td>As an <strong>organizer</strong>, I want to <strong>receive email notifications</strong> when someone RSVPs, so that I'm updated in real time.</td><td><span class="badge nice">NICE</span></td></tr>
+        <tr><td>20</td><td>As a <strong>guest</strong>, I want to <strong>download a calendar file (.ics)</strong> for the event, so that I can add it to my calendar.</td><td><span class="badge nice">NICE</span></td></tr>
+        <tr><td>21</td><td>As an <strong>organizer</strong>, I want to <strong>see RSVP counts update in real time</strong> (via SignalR), so that I don't need to refresh.</td><td><span class="badge nice">NICE</span></td></tr>
+        <tr><td>22</td><td>As an <strong>organizer</strong>, I want to <strong>generate a QR code</strong> for the invite link, so that I can print or share it visually.</td><td><span class="badge nice">NICE</span></td></tr>
+        <tr><td>23</td><td>As an <strong>organizer</strong>, I want to <strong>see an analytics dashboard</strong> with response rates and trends, so that I can measure engagement.</td><td><span class="badge nice">NICE</span></td></tr>
+        <tr><td>24</td><td>As an <strong>organizer</strong>, I want to <strong>upload a cover image</strong> for the event, so that the invite page looks appealing.</td><td><span class="badge nice">NICE</span></td></tr>
+    </tbody>
+</table>
+
+<!-- Section 6 -->
+<h2 id="sec6" class="page-break">6. Security Plan</h2>
+
+<h3>6.1 Input Validation &amp; Sanitization</h3>
+<ul>
+    <li><strong>Server-side:</strong> FluentValidation on every MediatR request — validates lengths, formats, ranges, required fields</li>
+    <li><strong>Client-side:</strong> Angular Reactive Forms validators (for UX only — never trust client)</li>
+    <li><strong>HTML sanitization:</strong> User-generated text sanitized on output using Angular's built-in sanitizer; stored as-is for fidelity</li>
+    <li><strong>SQL Injection:</strong> Not applicable — EF Core parameterizes all queries</li>
+</ul>
+
+<h3>6.2 Rate Limiting on RSVP Endpoint</h3>
+<ul>
+    <li>ASP.NET Core built-in <code>RateLimiter</code> middleware</li>
+    <li>Policy: <strong>Fixed window</strong>, 5 RSVP submissions per IP per 10-minute window on <code>POST /invite/{token}/rsvp</code></li>
+    <li>Returns <code>429 Too Many Requests</code> with <code>Retry-After</code> header</li>
+    <li>Secondary protection: duplicate detection by <code>GuestEmail + EventId</code> (unique filtered index)</li>
+</ul>
+
+<h3>6.3 Expiring Invite Links</h3>
+<ul>
+    <li><code>ExpiresAt</code> checked on every <code>GET /invite/{token}</code> and <code>POST /invite/{token}/rsvp</code></li>
+    <li>Expired links return <code>410 Gone</code> with a friendly message</li>
+    <li><code>MaxUses</code> compared against <code>UseCount</code> — returns <code>410 Gone</code> when exceeded</li>
+    <li>Organizer can deactivate link by setting <code>IsActive = false</code></li>
+</ul>
+
+<h3>6.4 CORS Policy</h3>
+<ul>
+    <li>Development: Allow <code>http://localhost:4200</code></li>
+    <li>Production: Allow only the configured frontend domain</li>
+    <li>Restrict methods: <code>GET, POST, PUT, PATCH, DELETE</code></li>
+    <li>Restrict headers: <code>Authorization, Content-Type</code></li>
+    <li>No wildcard <code>*</code> origins</li>
+</ul>
+
+<h3>6.5 Authentication &amp; Authorization</h3>
+<ul>
+    <li><strong>Auth0 JWT validation:</strong> <code>.AddAuthentication().AddJwtBearer()</code> with Auth0 domain/audience</li>
+    <li><strong>Authorization policies:</strong> <code>[Authorize]</code> on all endpoints except public invite/RSVP routes</li>
+    <li><strong>Resource-based auth:</strong> Events can only be edited/deleted by their <code>OrganizerId</code> — checked in handler, not just by policy</li>
+    <li><strong>No admin role for MVP:</strong> Organizer owns their events, no cross-user access</li>
+</ul>
+
+<h3>6.6 HTTP Security Headers</h3>
+<table>
+    <thead>
+        <tr><th>Header</th><th>Value</th></tr>
+    </thead>
+    <tbody>
+        <tr><td><code>Strict-Transport-Security</code></td><td><code>max-age=31536000; includeSubDomains</code></td></tr>
+        <tr><td><code>X-Content-Type-Options</code></td><td><code>nosniff</code></td></tr>
+        <tr><td><code>X-Frame-Options</code></td><td><code>DENY</code></td></tr>
+        <tr><td><code>Content-Security-Policy</code></td><td><code>default-src 'self'; ...</code> (tailored for Auth0 and API)</td></tr>
+        <tr><td><code>Referrer-Policy</code></td><td><code>strict-origin-when-cross-origin</code></td></tr>
+        <tr><td><code>Permissions-Policy</code></td><td><code>camera=(), microphone=(), geolocation=()</code></td></tr>
+    </tbody>
+</table>
+
+<h3>6.7 Additional Security Measures</h3>
+<ul>
+    <li>HTTPS enforced (via Nginx reverse proxy in Docker, or Azure managed)</li>
+    <li>API keys/secrets stored in environment variables (not in source code)</li>
+    <li>Auth0 client secret stored only server-side</li>
+    <li>RSVP submissions logged with IP for abuse investigation (no unnecessary PII retention)</li>
+</ul>
+
+<!-- Section 7 -->
+<h2 id="sec7" class="page-break">7. Optional Enhancements</h2>
+
+<h3>7.1 Email Notifications (SendGrid)</h3>
+<ul>
+    <li>Register SendGrid free tier (100 emails/day)</li>
+    <li>Create <code>IEmailService</code> with SendGrid implementation</li>
+    <li>On RSVP submission, dispatch <code>RsvpSubmittedNotification</code> via MediatR notifications</li>
+    <li>Handler sends email to organizer with guest name, status, link to event detail</li>
+</ul>
+
+<h3>7.2 Calendar Export (.ics)</h3>
+<ul>
+    <li>NuGet package: <code>Ical.Net</code></li>
+    <li><code>GET /events/{id}/calendar</code> endpoint returns <code>.ics</code> file with <code>Content-Type: text/calendar</code></li>
+    <li>Download button on EventDetail and public RSVP confirmation page</li>
+</ul>
+
+<h3>7.3 Real-Time RSVP via SignalR</h3>
+<ul>
+    <li>Add SignalR hub: <code>RsvpHub</code> with group per event ID</li>
+    <li>On RSVP submission, broadcast to event group: <code>{ status, counts }</code></li>
+    <li>Angular: <code>@microsoft/signalr</code> package, connect on EventDetail page</li>
+    <li>Update RSVP summary signal in real time</li>
+</ul>
+
+<h3>7.4 QR Code Generation</h3>
+<ul>
+    <li>NuGet package: <code>QRCoder</code> (MIT, zero dependency)</li>
+    <li><code>GET /events/{id}/invite-links/{linkId}/qr</code> returns PNG image</li>
+    <li>Display QR code in modal with download button</li>
+</ul>
+
+<h3>7.5 Admin Analytics Dashboard</h3>
+<ul>
+    <li><code>GET /events/{id}/analytics</code> — response rate, RSVPs over time, status breakdown</li>
+    <li>Angular chart library (e.g., <code>ngx-charts</code> or <code>Chart.js</code>)</li>
+    <li>Cards: Total invited, Response rate %, Peak RSVP hour</li>
+</ul>
+
+<!-- ======================== PART II: DEVELOPMENT ROADMAP ======================== -->
+
+<h1 class="page-break">Part II — Development Roadmap &amp; Prompts</h1>
+
+<h2 id="prompting-strategy">Prompting Strategy (How to Use These Prompts)</h2>
+
+<div class="callout warning">
+    <strong>Important:</strong> Do NOT paste an entire phase as a single prompt. Each phase has been split into 2–4 sub-prompts grouped by logical dependency. This avoids AI output truncation, ensures consistent quality, and makes debugging easier.
+</div>
+
+<h3>Why Sub-Prompts?</h3>
+<table>
+    <thead>
+        <tr><th>Approach</th><th>Quality</th><th>Speed</th><th>Recommended?</th></tr>
+    </thead>
+    <tbody>
+        <tr><td>Full phase prompt (one shot)</td><td>Low — output gets truncated, last files are skeletons</td><td>Fast but buggy</td><td>No</td></tr>
+        <tr><td>One file per prompt</td><td>High but inconsistent across files</td><td>Very slow (70+ interactions)</td><td>No</td></tr>
+        <tr><td><strong>Logical sub-groups (2–4 per phase)</strong></td><td><strong>High and consistent</strong></td><td><strong>Balanced (~17 prompts total)</strong></td><td><strong>Yes</strong></td></tr>
+    </tbody>
+</table>
+
+<h3>How to Use Each Sub-Prompt</h3>
+<ol>
+    <li><strong>Always include the Context block</strong> — even in sub-prompts. AI sessions are stateless; it doesn't remember earlier prompts.</li>
+    <li><strong>List what's already done</strong> — prevents the AI from regenerating existing files or using different patterns.</li>
+    <li><strong>Test after each sub-prompt</strong> — run <code>dotnet build</code> and <code>ng serve</code> before moving to the next chunk. Fix errors immediately.</li>
+    <li><strong>Always include the Constraints block</strong> — code standards get forgotten otherwise.</li>
+    <li><strong>For frontend prompts</strong>, paste the <a href="#angular-standards">Angular Best Practices Reference</a> (next section) at the top of every Angular sub-prompt.</li>
+</ol>
+
+<h3>Total Prompts Across All Phases</h3>
+<table>
+    <thead>
+        <tr><th>Phase</th><th>Sub-Prompts</th><th>Focus</th></tr>
+    </thead>
+    <tbody>
+        <tr><td>1</td><td>2 (1A backend, 1B frontend)</td><td>Project scaffolding</td></tr>
+        <tr><td>2</td><td>2 (2A backend, 2B frontend)</td><td>Auth0 integration</td></tr>
+        <tr><td>3</td><td>3 (3A backend, 3B + 3C frontend)</td><td>Event CRUD</td></tr>
+        <tr><td>4</td><td>3 (4A backend, 4B + 4C frontend)</td><td>Invite links + RSVP</td></tr>
+        <tr><td>5</td><td>2 (5A backend, 5B frontend)</td><td>Security &amp; polish</td></tr>
+        <tr><td>6</td><td>1 (config files)</td><td>Dockerize</td></tr>
+        <tr><td>7</td><td>2 (7A resources, 7B CI/CD)</td><td>Deploy to Azure</td></tr>
+        <tr><td><strong>Total</strong></td><td><strong>~15 prompts</strong></td><td>—</td></tr>
+    </tbody>
+</table>
+
+<!-- ======================== ANGULAR BEST PRACTICES ======================== -->
+<h2 id="angular-standards" class="page-break">Angular Best Practices Reference</h2>
+
+<div class="callout">
+    <strong>Frontend Prompt Header:</strong> Paste the entire block below at the TOP of every Angular sub-prompt (1B, 2B, 3B, 3C, 4B, 4C, 5B). This ensures the AI follows modern Angular v20+ conventions consistently across all generated code.
+</div>
+
+<div class="prompt-box">
+    <h4>Copy-Paste Block — Angular Best Practices</h4>
+<pre><code>### Angular Best Practices (apply to all generated code)
+
+You are an expert in TypeScript, Angular, and scalable web application development.
+You write functional, maintainable, performant, and accessible code following
+Angular and TypeScript best practices.
+
+## TypeScript Best Practices
+- Use strict type checking
+- Prefer type inference when the type is obvious
+- Avoid the `any` type; use `unknown` when type is uncertain
+
+## Angular Best Practices
+- Always use standalone components over NgModules
+- Must NOT set `standalone: true` inside Angular decorators. It's the default in Angular v20+.
+- Use signals for state management
+- Implement lazy loading for feature routes
+- Do NOT use the `@HostBinding` and `@HostListener` decorators. Put host bindings
+  inside the `host` object of the `@Component` or `@Directive` decorator instead
+- Use `NgOptimizedImage` for all static images.
+  - `NgOptimizedImage` does not work for inline base64 images.
+
+## Accessibility Requirements
+- It MUST pass all AXE checks.
+- It MUST follow all WCAG AA minimums, including focus management, color contrast,
+  and ARIA attributes.
+
+## Components
+- Keep components small and focused on a single responsibility
+- Use `input()` and `output()` functions instead of decorators
+- Use `computed()` for derived state
+- Set `changeDetection: ChangeDetectionStrategy.OnPush` in `@Component` decorator
+- Prefer Reactive forms instead of Template-driven ones
+- Do NOT use `ngClass`, use `class` bindings instead
+- Do NOT use `ngStyle`, use `style` bindings instead
+- When using external templates/styles, use paths relative to the component TS file.
+
+## State Management
+- Use signals for local component state
+- Use `computed()` for derived state
+- Keep state transformations pure and predictable
+- Do NOT use `mutate` on signals, use `update` or `set` instead
+
+## Templates
+- Keep templates simple and avoid complex logic
+- Use native control flow (`@if`, `@for`, `@switch`) instead of `*ngIf`, `*ngFor`, `*ngSwitch`
+- Use the async pipe to handle observables
+- Do not assume globals like (`new Date()`) are available.
+
+## Services
+- Design services around a single responsibility
+- Use the `providedIn: 'root'` option for singleton services
+- Use the `inject()` function instead of constructor injection</code></pre>
+</div>
+
+<h2 id="dev-setup" class="page-break">Local Development Setup (Prerequisites)</h2>
+<p>Before starting Phase 1, install these tools:</p>
+<table>
+    <thead>
+        <tr><th>Step</th><th>Tool</th><th>Install Method</th><th>Verify</th></tr>
+    </thead>
+    <tbody>
+        <tr><td>1</td><td>.NET 10 SDK</td><td>Download from dot.net</td><td><code>dotnet --version</code></td></tr>
+        <tr><td>2</td><td>Node.js (LTS)</td><td>Download from nodejs.org</td><td><code>node --version</code></td></tr>
+        <tr><td>3</td><td>Angular CLI</td><td><code>npm install -g @angular/cli</code></td><td><code>ng version</code></td></tr>
+        <tr><td>4</td><td>SQL Server Express LocalDB</td><td>Comes with Visual Studio, or standalone installer</td><td><code>SqlLocalDB info</code></td></tr>
+        <tr><td>5</td><td>VS Code Extensions</td><td>C# Dev Kit, Angular Language Service, Tailwind CSS IntelliSense</td><td>—</td></tr>
+        <tr><td>6</td><td>Git</td><td>Download from git-scm.com</td><td><code>git --version</code></td></tr>
+    </tbody>
+</table>
+
+<p><strong>Optional but helpful:</strong></p>
+<ul>
+    <li><strong>Azure Data Studio</strong> or <strong>SSMS</strong> — visually browse your database</li>
+    <li><strong>Postman</strong> or <strong>Bruno</strong> — test API endpoints manually (Swagger is also set up)</li>
+</ul>
+
+<div class="callout success">
+    <strong>No Docker or Azure knowledge required for Phases 1–5.</strong> You develop using <code>ng serve</code> (Angular) and <code>dotnet run</code> (.NET) with SQL Server LocalDB. Docker and Azure are added in Phases 6–7 only after the app is fully working.
+</div>
+
+<!-- ========== PHASE 1 ========== -->
+<div class="phase-header page-break" id="phase1">
+    <h2>Phase 1: Project Setup &amp; Infrastructure</h2>
+    <div class="phase-meta">2 sub-prompts &bull; Scope: Scaffold both projects, configure EF Core, Tailwind, folder structure &bull; No Docker, No Azure</div>
+</div>
+
+<h3>Goals</h3>
+<ul>
+    <li>Create .NET 10 Web API project with Vertical Slice folder structure</li>
+    <li>Install NuGet packages: MediatR, FluentValidation, EF Core (SQL Server), Mapster</li>
+    <li>Configure <code>AppDbContext</code> with all entities and seed <code>EventTypes</code></li>
+    <li>Create initial EF Core migration</li>
+    <li>Scaffold Angular project with standalone components, install Tailwind CSS</li>
+    <li>Configure environment files for both projects</li>
+    <li>Git init with <code>.gitignore</code></li>
+</ul>
+
+<h3>Verification Checklist</h3>
+<ul>
+    <li>✅ <code>dotnet run</code> starts API on <code>http://localhost:5000</code>, Swagger shows at <code>/swagger</code></li>
+    <li>✅ <code>ng serve</code> starts Angular on <code>http://localhost:4200</code></li>
+    <li>✅ Database <code>EventSync</code> created with all tables via migration</li>
+    <li>✅ <code>EventTypes</code> table has seed data</li>
+</ul>
+
+<div class="prompt-box" id="p1a">
+    <h4>Sub-Prompt 1A — Backend Scaffold (.NET 10 API)</h4>
+<pre><code>### Context
+I'm building "EventSync" — a full-stack event management app.
+- Backend: .NET 10 Web API, Vertical Slice Architecture, Minimal APIs
+- Database: SQL Server (LocalDB for development)
+- Workspace: c:\Angular Projects\Full Stack Projects\Angular and Dotnet\Events App
+- This is sub-prompt 1A of 2 for Phase 1. Frontend is handled separately in 1B.
+
+### Task: Phase 1A — Backend Scaffold
+
+1. Create a new .NET 10 Web API project named "EventSync.Api" in a "server" subfolder
+2. Set up the Vertical Slice folder structure:
+   - Data/Entities/ (User, Event, EventType, InviteLink, Rsvp)
+   - Data/Configurations/ (EF Core entity configs)
+   - Data/AppDbContext.cs
+   - Features/ (empty folders: Auth, Events, InviteLinks, RSVPs)
+   - Common/Middleware/ Common/Behaviors/ Common/Models/
+3. Install NuGet packages: MediatR, FluentValidation, FluentValidation.AspNetCore,
+   Microsoft.EntityFrameworkCore.SqlServer, Microsoft.EntityFrameworkCore.Design, Mapster
+4. Create all entity classes matching this schema:
+   - User: Id (Guid), Auth0Id (nvarchar 128, unique), Email (nvarchar 256),
+     DisplayName (nvarchar 100), AvatarUrl? (nvarchar 512), CreatedAt, UpdatedAt?, IsDeleted
+   - EventType: Id (int identity), Name (nvarchar 50, unique), Icon? (nvarchar 50)
+   - Event: Id (Guid), OrganizerId (FK Users), EventTypeId (FK EventTypes),
+     Title (nvarchar 200), Description? (nvarchar 2000), Location? (nvarchar 300),
+     IsVirtual (bit), MeetingUrl? (nvarchar 512), StartDate, EndDate?, MaxAttendees? (int),
+     CoverImageUrl? (nvarchar 512), CreatedAt, UpdatedAt?, IsDeleted, IsCancelled
+   - InviteLink: Id (Guid), EventId (FK), Token (nvarchar 64, unique),
+     ExpiresAt?, MaxUses?, UseCount, IsActive, CreatedAt
+   - Rsvp: Id (Guid), EventId (FK), InviteLinkId? (FK), GuestName (nvarchar 100),
+     GuestEmail? (nvarchar 256), Status (tinyint), Note? (nvarchar 500),
+     RespondedAt, UpdatedAt?, IpAddress? (nvarchar 45)
+5. Create EF Core configurations with proper relationships, indexes, and constraints:
+   - Unique index on Users.Auth0Id
+   - Composite index on Events (OrganizerId, IsDeleted)
+   - Index on Events.StartDate
+   - Unique index on InviteLinks.Token
+   - Composite index on RSVPs (EventId, Status)
+   - Filtered unique index on RSVPs (GuestEmail, EventId) WHERE GuestEmail IS NOT NULL
+6. Create AppDbContext with DbSets and global query filters for soft delete on Users and Events
+7. Seed EventTypes via OnModelCreating: Seminar, Meeting, Gathering, Anniversary,
+   Birthday, Workshop, Conference, Other (with appropriate emoji icons)
+8. Register MediatR (scan current assembly), FluentValidation (auto-validation),
+   DbContext in Program.cs
+9. Add CORS policy "DevCors" allowing http://localhost:4200 with all standard methods
+10. Add Swagger/OpenAPI with API title "EventSync API v1"
+11. Create initial EF Core migration named "InitialCreate" and apply to LocalDB
+12. Connection string in appsettings.Development.json:
+    "DefaultConnection": "Server=(localdb)\\MSSQLLocalDB;Database=EventSync;Trusted_Connection=true;TrustServerCertificate=true"
+13. Add a health check endpoint: GET /health that returns 200 OK with { status: "healthy", timestamp }
+14. Configure API to listen on http://localhost:5000
+
+### Provide:
+- All files in full (no "..." or placeholders)
+- Exact CLI commands to create the project, install packages, run migrations
+- Verification steps to confirm everything works
+
+### Constraints
+- Follow Accenture coding standard: add "// Generated by GitHub Copilot" comment above generated blocks
+- Use async/await in C# (never blocking calls)
+- All public C# members need XML documentation (///)
+- Use file-scoped namespaces
+- Code should compile and run without errors</code></pre>
+</div>
+
+<div class="prompt-box" id="p1b">
+    <h4>Sub-Prompt 1B — Frontend Scaffold (Angular + Tailwind)</h4>
+<pre><code>[Paste the Angular Best Practices Reference block here first]
+
+### Context
+I'm building "EventSync" — a full-stack event management app.
+- Frontend: Angular (latest stable, v20+), Standalone Components, Tailwind CSS v4+
+- Workspace: c:\Angular Projects\Full Stack Projects\Angular and Dotnet\Events App
+- This is sub-prompt 1B of 2 for Phase 1. Backend (1A) is already complete:
+  .NET API runs at http://localhost:5000/api/v1 with Swagger at /swagger.
+
+### Task: Phase 1B — Frontend Scaffold
+
+1. Create a new Angular project named "client" in a "client" subfolder.
+   Use: ng new client --standalone --style=css --routing --ssr=false
+2. Install and configure Tailwind CSS v4+:
+   - Install: tailwindcss, @tailwindcss/postcss, @tailwindcss/forms
+   - Configure postcss.config.js
+   - Add Tailwind directives to src/styles.css
+   - Set up tailwind.config.js with the project's content paths
+3. Set up the folder structure under src/app/:
+   - core/auth/ (empty for Phase 2)
+   - core/api/ (empty for Phase 3)
+   - core/models/ (empty for Phase 3)
+   - core/error/ (empty for Phase 5)
+   - shared/components/, shared/directives/, shared/pipes/ (empty for now)
+   - features/auth/ (empty for Phase 2)
+   - features/dashboard/ (empty for Phase 3)
+   - features/events/ (empty for Phase 3)
+   - features/public-rsvp/ (empty for Phase 4)
+   - layout/header/, layout/sidebar/, layout/footer/
+4. Create environment files in src/environments/:
+   - environment.ts: { production: false, apiUrl: 'http://localhost:5000/api/v1' }
+   - environment.prod.ts: { production: true, apiUrl: '/api/v1' }
+5. Create a basic app shell:
+   - HeaderComponent: app brand "EventSync", placeholder nav (no auth yet)
+   - FooterComponent: copyright text
+   - AppComponent: layout with header, &lt;main&gt; with router-outlet, footer
+   - All components are standalone (no NgModules — never set standalone: true since v20+)
+6. Configure app.config.ts with:
+   - provideRouter (with empty routes array for now, ready for lazy loading)
+   - provideHttpClient(withFetch())
+7. Apply Tailwind base styles with mobile-first approach.
+   Use semantic HTML elements (header, main, footer, nav).
+8. Create a simple landing message in the main area: "Welcome to EventSync"
+
+### Git Setup (root of workspace):
+1. Initialize git repo at workspace root: git init
+2. Create .gitignore covering both .NET and Angular:
+   - bin/, obj/, *.user, .vs/, appsettings.Development.json
+   - node_modules/, dist/, .angular/, .env, *.local
+
+### Provide:
+- All files in full (no "..." or placeholders)
+- Exact CLI commands to create the project and install packages
+- Verification steps to confirm Tailwind is working (e.g., a styled element)
+
+### Constraints
+- Standalone components ONLY (NEVER set standalone: true, it's the default in v20+)
+- Use signals for any state (even loading flags)
+- ChangeDetectionStrategy.OnPush on all components
+- Use inject() function, not constructor injection
+- Use native control flow (@if, @for, @switch) — never *ngIf, *ngFor, *ngSwitch
+- Use class bindings (not ngClass), style bindings (not ngStyle)
+- Semantic, accessible HTML
+- Add "// Generated by GitHub Copilot" comment above generated blocks
+- Mobile-first Tailwind design
+- Code should compile and run without errors</code></pre>
+</div>
+
+<!-- ========== PHASE 2 ========== -->
+<div class="phase-header page-break" id="phase2">
+    <h2>Phase 2: Authentication (Auth0)</h2>
+    <div class="phase-meta">2 sub-prompts &bull; Scope: Auth0 integration on frontend &amp; backend &bull; JWT validation &bull; User auto-provisioning</div>
+</div>
+
+<h3>Goals</h3>
+<ul>
+    <li>Configure Auth0 tenant (Application + API)</li>
+    <li>Add JWT Bearer authentication to .NET API</li>
+    <li>Create user profile endpoints (GET/PUT)</li>
+    <li>Auto-provision user on first login</li>
+    <li>Install and configure <code>@auth0/auth0-angular</code></li>
+    <li>Build Login page, Auth Callback, and layout with user avatar</li>
+</ul>
+
+<h3>Verification Checklist</h3>
+<ul>
+    <li>✅ User can log in via Auth0 (social or email/password)</li>
+    <li>✅ Header shows user display name and avatar after login</li>
+    <li>✅ API rejects unauthenticated requests with 401</li>
+    <li>✅ First login creates a User row in the database</li>
+    <li>✅ User can log out and get redirected to login page</li>
+</ul>
+
+<div class="callout">
+    <strong>Before starting:</strong> Set up Auth0 tenant first (do this once manually in the Auth0 dashboard):
+    <ol>
+        <li>Sign up at auth0.com (free tier)</li>
+        <li>Create a Single Page Application named "EventSync"</li>
+        <li>Create an API with identifier <code>https://eventsync-api</code></li>
+        <li>In the SPA settings, add Allowed Callback URLs: <code>http://localhost:4200, http://localhost:4200/auth/callback</code></li>
+        <li>Add Allowed Logout URLs: <code>http://localhost:4200</code></li>
+        <li>Add Allowed Web Origins: <code>http://localhost:4200</code></li>
+        <li>Enable email/password + Google social connection</li>
+        <li>Note your: Domain (e.g., <code>your-tenant.auth0.com</code>) and Client ID</li>
+    </ol>
+</div>
+
+<div class="prompt-box" id="p2a">
+    <h4>Sub-Prompt 2A — Backend (JWT validation + Profile endpoints)</h4>
+<pre><code>### Context
+Continuing "EventSync". Phase 1 is complete — backend (.NET 10 API at server/EventSync.Api)
+and frontend (Angular at client/) both run independently. Database has all tables with seed data.
+
+This is sub-prompt 2A of 2 for Phase 2 (backend only). Frontend Auth0 integration
+is handled in 2B.
+
+Auth0 settings (already configured manually):
+- Auth0 Domain: {YOUR_AUTH0_DOMAIN}
+- Auth0 API Audience: https://eventsync-api
+
+### Task: Phase 2A — Backend Authentication
+
+1. Add NuGet package: Microsoft.AspNetCore.Authentication.JwtBearer
+2. Add Auth0 settings to appsettings.json:
+   "Auth0": {
+     "Domain": "{YOUR_AUTH0_DOMAIN}",
+     "Audience": "https://eventsync-api"
+   }
+3. Configure JWT Bearer authentication in Program.cs:
+   - Authority: https://{Auth0:Domain}/
+   - Audience: {Auth0:Audience}
+   - Validate issuer, audience, lifetime, signing key
+   - Map "sub" claim to NameIdentifier
+4. Add app.UseAuthentication() and app.UseAuthorization() to the pipeline (in correct order)
+5. Create Common/Services/CurrentUserService.cs (ICurrentUserService + impl):
+   - Property Auth0Id (from "sub" claim)
+   - Property Email (from "email" claim)
+   - Property Name (from "name" or "nickname" claim)
+   - Property Picture (from "picture" claim)
+   - Property IsAuthenticated
+   - Method GetOrCreateUserAsync(CancellationToken): looks up User by Auth0Id,
+     creates a new one if not found (with claims data), returns the User entity
+   - Register as Scoped, depends on IHttpContextAccessor
+6. Register IHttpContextAccessor in DI
+
+7. Create Features/Auth/UserProfileDto.cs:
+   record UserProfileDto(Guid Id, string Email, string DisplayName, string? AvatarUrl)
+
+8. Create Features/Auth/GetProfile/ slice:
+   - GetProfileQuery: IRequest&lt;UserProfileDto&gt; (no parameters — uses current user)
+   - GetProfileHandler: calls CurrentUserService.GetOrCreateUserAsync, maps to DTO
+   - Endpoint: GET /api/v1/auth/profile [Authorize]
+   - Returns 200 with UserProfileDto
+
+9. Create Features/Auth/UpdateProfile/ slice:
+   - UpdateProfileCommand(string DisplayName, string? AvatarUrl): IRequest&lt;UserProfileDto&gt;
+   - UpdateProfileValidator (FluentValidation):
+     DisplayName required, max 100 chars
+     AvatarUrl when provided must be valid URL, max 512 chars
+   - UpdateProfileHandler: get current user, update fields, set UpdatedAt = UtcNow, save
+   - Endpoint: PUT /api/v1/auth/profile [Authorize]
+   - Returns 200 with updated UserProfileDto
+
+10. Add a MediatR ValidationBehavior in Common/Behaviors/ValidationBehavior.cs:
+    - Pipeline behavior that runs all FluentValidation validators for a request
+    - Throws ValidationException if any fail (you'll add the global handler in Phase 5)
+    - Register it in Program.cs
+
+11. Verify Swagger UI shows "Authorize" button and accepts a Bearer token for testing
+
+### Provide:
+- All files in full
+- Updated Program.cs in full
+- A sample curl request for testing /api/v1/auth/profile with a Bearer token
+
+### Constraints
+- Use async/await everywhere
+- Use file-scoped namespaces
+- All public members get XML docs
+- Add "// Generated by GitHub Copilot" comment above generated blocks
+- Token must be validated against Auth0's JWKS endpoint
+- Handle missing claims gracefully (don't throw NullReferenceException)
+- Follow Accenture security standards</code></pre>
+</div>
+
+<div class="prompt-box" id="p2b">
+    <h4>Sub-Prompt 2B — Frontend (Auth0 SDK + Login UI)</h4>
+<pre><code>[Paste the Angular Best Practices Reference block here first]
+
+### Context
+Continuing "EventSync". Phase 1 frontend scaffold is complete (Angular + Tailwind).
+Backend Phase 2A is complete — API now requires Bearer JWT for /api/v1/auth/* endpoints.
+
+This is sub-prompt 2B of 2 for Phase 2 (frontend only).
+
+Auth0 settings:
+- Auth0 Domain: {YOUR_AUTH0_DOMAIN}
+- Auth0 Client ID: {YOUR_CLIENT_ID}
+- Auth0 API Audience: https://eventsync-api
+
+### Task: Phase 2B — Frontend Authentication
+
+1. Install: npm install @auth0/auth0-angular
+
+2. Update src/environments/environment.ts and environment.prod.ts to add:
+   auth0: {
+     domain: '{YOUR_AUTH0_DOMAIN}',
+     clientId: '{YOUR_CLIENT_ID}',
+     authorizationParams: {
+       redirect_uri: window.location.origin + '/auth/callback',
+       audience: 'https://eventsync-api'
+     }
+   }
+
+3. Update app.config.ts to include:
+   - provideAuth0(environment.auth0)
+   - HTTP interceptor configuration that attaches tokens for environment.apiUrl
+
+4. Create core/auth/auth.service.ts (using inject(), providedIn: 'root'):
+   - Wraps @auth0/auth0-angular's AuthService
+   - Exposes signals: isAuthenticated (from toSignal), user (from toSignal), isLoading
+   - Methods: login(), logout(), getAccessToken() — return Promise/Observable
+   - Use computed() for derived state like displayName
+
+5. Create core/auth/auth.guard.ts:
+   - Functional guard (CanActivateFn)
+   - Use inject(AuthService) and Router
+   - Redirect to /login if not authenticated, preserve return URL
+
+6. Create core/auth/auth.interceptor.ts:
+   - Functional HTTP interceptor (HttpInterceptorFn)
+   - Skip if request URL doesn't start with environment.apiUrl
+   - Get access token from Auth0 SDK, attach as Authorization: Bearer {token}
+   - Pass through if no token available (let backend return 401)
+
+7. Register the interceptor in app.config.ts via withInterceptors([authInterceptor])
+
+8. Create core/api/auth-api.service.ts:
+   - Methods: getProfile(): Observable&lt;UserProfileDto&gt;,
+              updateProfile(data): Observable&lt;UserProfileDto&gt;
+   - Use HttpClient from inject()
+
+9. Create core/models/user-profile.model.ts:
+   export interface UserProfileDto { id: string; email: string;
+     displayName: string; avatarUrl?: string | null; }
+
+10. Build features/auth/login/login.component.ts:
+    - Standalone (default in v20+, do NOT set standalone: true)
+    - ChangeDetectionStrategy.OnPush
+    - Centered card with EventSync brand, "Sign in with Auth0" button
+    - On click → calls authService.login()
+    - If already authenticated, redirect to /dashboard
+    - Tailwind styled, mobile-first, accessible (proper heading, button labels)
+
+11. Build features/auth/auth-callback/auth-callback.component.ts:
+    - Standalone, OnPush
+    - Shows centered loading spinner with "Completing sign-in..." message
+    - On init: wait for Auth0 to process redirect (isLoading signal becomes false),
+      then router.navigate(['/dashboard'])
+    - Use effect() to react to auth state changes
+
+12. Update layout/header/header.component.ts:
+    - Show "Sign In" link/button when not authenticated
+    - Show user avatar (using NgOptimizedImage) + display name + dropdown with "Sign Out"
+      when authenticated
+    - Avatar must have meaningful alt text
+    - Dropdown must be keyboard accessible (Esc to close, arrow keys to navigate)
+    - Use signals from authService for reactivity
+
+13. Update app.routes.ts with lazy-loaded routes:
+    - { path: 'login', loadComponent: () => import('./features/auth/login/login.component')
+        .then(m => m.LoginComponent) }
+    - { path: 'auth/callback', loadComponent: () => import('./features/auth/auth-callback/...') }
+    - { path: 'dashboard', canActivate: [authGuard], loadComponent: () => ... }
+      (dashboard component is just placeholder showing "Welcome, {displayName}" for now)
+    - { path: '', pathMatch: 'full', redirectTo: 'dashboard' }
+
+### Provide:
+- All files in full (no "..." or placeholders)
+- Updated app.config.ts and app.routes.ts in full
+- Verification steps (login flow, see avatar in header, log out)
+
+### Constraints
+- Use signals everywhere; no @HostBinding/@HostListener
+- Use input()/output() if any I/O needed
+- inject() not constructor injection
+- Native control flow (@if, @for) only
+- class/style bindings (no ngClass/ngStyle)
+- NgOptimizedImage for avatar
+- All interactive elements must be keyboard accessible
+- AXE-clean, WCAG AA compliant
+- Add "// Generated by GitHub Copilot" comment above generated blocks
+- Public routes (/rsvp/*) must NOT be guarded (will be added in Phase 4)</code></pre>
+</div>
+
+<!-- ========== PHASE 3 ========== -->
+<div class="phase-header page-break" id="phase3">
+    <h2>Phase 3: Event CRUD</h2>
+    <div class="phase-meta">3 sub-prompts &bull; Scope: Full event lifecycle for organizers &bull; List with pagination &bull; Dashboard</div>
+</div>
+
+<h3>Goals</h3>
+<ul>
+    <li>Create, Read, Update, Delete (soft), Cancel events</li>
+    <li>Paginated event list with search, type filter, sorting</li>
+    <li>Dashboard with upcoming events summary</li>
+    <li>Angular forms with proper validation</li>
+</ul>
+
+<h3>Verification Checklist</h3>
+<ul>
+    <li>✅ Organizer can create an event with all fields and see success feedback</li>
+    <li>✅ Event list shows all user's events with pagination working</li>
+    <li>✅ Search, type filter, and sort all work correctly</li>
+    <li>✅ Event detail page shows full info with RSVP summary (zeros for now)</li>
+    <li>✅ Edit event preserves existing data and shows validation errors</li>
+    <li>✅ Delete (soft) removes from list, Cancel shows cancelled badge</li>
+    <li>✅ Dashboard shows upcoming events count and recent events</li>
+</ul>
+
+<div class="prompt-box" id="p3a">
+    <h4>Sub-Prompt 3A — Backend (All Event Vertical Slices)</h4>
+<pre><code>### Context
+Continuing "EventSync". Phase 2 is complete — Auth0 works, JWT validation in place,
+users auto-provisioned. CurrentUserService is available via DI.
+
+This is sub-prompt 3A of 3 for Phase 3 (backend only). Frontend is split into 3B and 3C.
+
+### Task: Phase 3A — Backend Event CRUD
+
+Create the following Vertical Slices, each with: Endpoint + Request + Handler +
+Validator (where applicable) + Response DTO. Follow the existing folder structure
+under Features/Events/.
+
+1. Common/Models/PagedResult.cs:
+   - Generic record: PagedResult&lt;T&gt;(IReadOnlyList&lt;T&gt; Items, int Page, int PageSize,
+     int TotalCount) with computed TotalPages property
+
+2. Features/Events/CreateEvent/:
+   - CreateEventCommand(string Title, string? Description, int EventTypeId,
+     string? Location, bool IsVirtual, string? MeetingUrl, DateTime StartDate,
+     DateTime? EndDate, int? MaxAttendees) : IRequest&lt;EventDto&gt;
+   - CreateEventValidator (FluentValidation):
+     Title required, max 200; Description max 2000; EventTypeId > 0;
+     Location max 300; MeetingUrl valid URL when provided;
+     StartDate must be in future; EndDate after StartDate when provided;
+     MaxAttendees >= 1 when provided
+   - CreateEventHandler: get current user, create Event entity with OrganizerId,
+     CreatedAt = UtcNow, save, return EventDto
+   - Endpoint: POST /api/v1/events [Authorize], returns 201 with EventDto
+
+3. Features/Events/GetEvents/:
+   - GetEventsQuery(int Page = 1, int PageSize = 10, string? Search = null,
+     int? TypeId = null, string SortBy = "date", string SortDir = "asc")
+     : IRequest&lt;PagedResult&lt;EventSummaryDto&gt;&gt;
+   - GetEventsHandler:
+     - Filter by OrganizerId == currentUser.Id, IsDeleted == false (handled by global filter)
+     - Search filter: Title contains Search (case-insensitive)
+     - Type filter: EventTypeId == TypeId
+     - Sort by date or title, asc or desc
+     - Project to EventSummaryDto including RSVP count where Status == Going
+     - Apply pagination, return PagedResult
+   - PageSize clamped between 1 and 50
+   - Endpoint: GET /api/v1/events [Authorize] with query parameters
+   - EventSummaryDto: { Id, Title, EventTypeName, EventTypeIcon, StartDate, EndDate,
+     Location, IsVirtual, IsCancelled, RsvpCount, CreatedAt }
+
+4. Features/Events/GetEventById/:
+   - GetEventByIdQuery(Guid Id) : IRequest&lt;EventDetailDto&gt;
+   - Handler: load event with EventType and Organizer, verify OrganizerId == currentUser.Id
+     (throw UnauthorizedAccessException if not), compute RSVP summary, return EventDetailDto
+   - InviteLinks array is empty for now (populated in Phase 4)
+   - Endpoint: GET /api/v1/events/{id} [Authorize]
+   - EventDetailDto: full event + EventTypeDto + OrganizerDto { DisplayName, AvatarUrl } +
+     RsvpSummaryDto { Going, NotGoing, Maybe, Total } + InviteLinkDto[] (empty array)
+
+5. Features/Events/UpdateEvent/:
+   - UpdateEventCommand(Guid Id, string Title, string? Description, int EventTypeId,
+     string? Location, bool IsVirtual, string? MeetingUrl, DateTime StartDate,
+     DateTime? EndDate, int? MaxAttendees) : IRequest&lt;EventDto&gt;
+   - UpdateEventValidator: same rules as Create (StartDate must be future for new events;
+     for updates allow past start date if event already started — make this configurable)
+   - Handler: load, verify ownership, update fields, set UpdatedAt = UtcNow, save
+   - Endpoint: PUT /api/v1/events/{id} [Authorize]
+
+6. Features/Events/DeleteEvent/:
+   - DeleteEventCommand(Guid Id) : IRequest&lt;Unit&gt;
+   - Handler: load, verify ownership, set IsDeleted = true, save
+   - Endpoint: DELETE /api/v1/events/{id} [Authorize], returns 204 No Content
+
+7. Features/Events/CancelEvent/:
+   - CancelEventCommand(Guid Id) : IRequest&lt;Unit&gt;
+   - Handler: load, verify ownership, set IsCancelled = true, set UpdatedAt, save
+   - Endpoint: PATCH /api/v1/events/{id}/cancel [Authorize], returns 204
+
+8. Features/EventTypes/GetEventTypes/:
+   - GetEventTypesQuery() : IRequest&lt;IReadOnlyList&lt;EventTypeDto&gt;&gt;
+   - Handler: return all EventTypes ordered by Name
+   - Endpoint: GET /api/v1/event-types [Authorize]
+   - EventTypeDto: { Id, Name, Icon }
+
+9. Features/Events/Common/EventDto.cs:
+   - record EventDto with all primary event fields + EventTypeDto
+
+### Provide:
+- All slice files in full
+- Endpoint registration code (group endpoints under MapGroup("/api/v1") if not already)
+- Sample requests for testing (curl or REST Client format)
+
+### Constraints
+- All endpoints require [Authorize]
+- All endpoints verify resource ownership in the handler (not just the route)
+- Use IQueryable + AsNoTracking for read queries
+- Use Mapster (or manual mapping) for entity → DTO
+- Async/await everywhere; use CancellationToken
+- File-scoped namespaces, XML docs, "// Generated by GitHub Copilot" markers
+- Follow Accenture standards
+- The ValidationBehavior from Phase 2A automatically validates all commands</code></pre>
+</div>
+
+<div class="prompt-box" id="p3b">
+    <h4>Sub-Prompt 3B — Frontend (Event Service + List/Create/Edit pages)</h4>
+<pre><code>[Paste the Angular Best Practices Reference block here first]
+
+### Context
+Continuing "EventSync". Phase 3A backend is complete — all event CRUD endpoints
+exist at /api/v1/events and /api/v1/event-types.
+
+This is sub-prompt 3B of 3 for Phase 3 (frontend list/create/edit only).
+Sub-prompt 3C handles event detail, dashboard, and shared components.
+
+### Task: Phase 3B — Frontend Event Service + List + Create + Edit
+
+1. Create core/models/event.model.ts with all DTOs:
+   EventTypeDto, EventSummaryDto, EventDetailDto, EventDto, OrganizerDto,
+   RsvpSummaryDto, InviteLinkDto (placeholder for Phase 4),
+   CreateEventRequest, UpdateEventRequest
+
+2. Create core/models/paged-result.model.ts:
+   export interface PagedResult&lt;T&gt; { items: T[]; page: number; pageSize: number;
+     totalCount: number; totalPages: number; }
+
+3. Create core/api/event.service.ts (providedIn: 'root', uses inject(HttpClient)):
+   - State signals: events (PagedResult or null), selectedEvent (EventDetailDto or null),
+     eventTypes (EventTypeDto[]), loading (boolean), error (string or null)
+   - Methods (return Observables):
+     getEvents(params: EventListParams): Observable&lt;PagedResult&lt;EventSummaryDto&gt;&gt;
+     getEvent(id: string): Observable&lt;EventDetailDto&gt;
+     createEvent(data: CreateEventRequest): Observable&lt;EventDto&gt;
+     updateEvent(id: string, data: UpdateEventRequest): Observable&lt;EventDto&gt;
+     deleteEvent(id: string): Observable&lt;void&gt;
+     cancelEvent(id: string): Observable&lt;void&gt;
+     getEventTypes(): Observable&lt;EventTypeDto[]&gt;
+   - Each method updates the relevant signal via tap()
+
+4. Build features/events/event-list/event-list.component.ts:
+   - Standalone, OnPush
+   - Use signals: search (string), eventTypeFilter (number | null), sortBy ('date'|'title'),
+     sortDir ('asc'|'desc'), currentPage (number)
+   - Use computed() to build the params object for the API call
+   - Use toSignal() to convert the events Observable to a signal
+   - Layout:
+     * Page header with title "My Events" and "Create Event" button (routerLink to /events/create)
+     * Filter bar: search input (debounced 300ms via rxjs), event type select, sort toggle
+     * Desktop: table with columns Title, Type, Date, Location, RSVPs, Actions
+     * Mobile: card layout (stacked)
+     * Each row/card shows status badges (cancelled/upcoming/past)
+     * Action buttons: View, Edit, Delete (with confirm)
+     * Empty state when no events: illustration + "Create your first event" CTA
+     * Pagination component at bottom
+   - Use native control flow @if and @for everywhere
+   - Use class bindings (not ngClass) for conditional styling
+   - Accessible: proper table semantics, ARIA labels on icon buttons, keyboard navigable
+
+5. Build features/events/create-event/create-event.component.ts:
+   - Standalone, OnPush
+   - Reactive form with typed FormGroup using FormBuilder via inject()
+   - Fields: title (required, maxLength 200), description (textarea, maxLength 2000),
+     eventTypeId (select, required), location (maxLength 300),
+     isVirtual (checkbox toggle), meetingUrl (conditional, valid URL),
+     startDate (datetime-local, required, future), endDate (datetime-local, after start),
+     maxAttendees (number, min 1)
+   - Custom validators for: futureDate, urlFormat, dateAfter('startDate')
+   - Conditional: meetingUrl shown only when isVirtual === true (use signal + computed)
+   - Inline error messages with aria-describedby links
+   - Submit button disabled while loading or invalid
+   - On success: toast/notification + router.navigate(['/events', newId])
+   - Cancel button: router.navigate(['/events'])
+   - Load eventTypes from EventService on init using effect() or in constructor
+   - All form controls have associated &lt;label&gt; elements (proper for/id)
+
+6. Build features/events/edit-event/edit-event.component.ts:
+   - Same structure as CreateEvent
+   - Resolve event by ID from route param (use input() for route signal in v20+:
+     id = input.required&lt;string&gt;())
+   - Pre-populate form from EventService.getEvent(id) using effect()
+   - Show loading spinner while fetching
+   - On submit: call updateEvent, navigate back to detail on success
+   - Title shows "Edit: {originalTitle}"
+
+7. Add features/events/events.routes.ts (lazy-loaded child routes):
+   export const EVENTS_ROUTES: Routes = [
+     { path: '', loadComponent: () => import('./event-list/event-list.component') ... },
+     { path: 'create', loadComponent: () => import('./create-event/create-event.component') ... },
+     { path: ':id/edit', loadComponent: () => import('./edit-event/edit-event.component') ... }
+   ];
+   (event-detail route is added in 3C)
+
+8. Update app.routes.ts:
+   { path: 'events', canActivate: [authGuard],
+     loadChildren: () => import('./features/events/events.routes').then(m => m.EVENTS_ROUTES) }
+
+### Provide:
+- All files in full (no placeholders)
+- A small custom validators file: shared/validators/custom-validators.ts
+
+### Constraints
+- Standalone components (default in v20+, NEVER set standalone: true)
+- ChangeDetectionStrategy.OnPush on all components
+- Signals for component state
+- input() / output() functions, never @Input/@Output
+- inject() not constructor injection
+- Native control flow only (@if, @for, @switch)
+- Class bindings, not ngClass
+- Reactive forms only (typed)
+- Use AsyncPipe with @if/@let if you need to render observables (or convert via toSignal)
+- Mobile-first Tailwind
+- Full a11y: AXE-clean, WCAG AA
+- Add "// Generated by GitHub Copilot" comment above generated blocks</code></pre>
+</div>
+
+<div class="prompt-box" id="p3c">
+    <h4>Sub-Prompt 3C — Frontend (EventDetail + Dashboard + Shared Components)</h4>
+<pre><code>[Paste the Angular Best Practices Reference block here first]
+
+### Context
+Continuing "EventSync". Phase 3B is complete — EventService, event list, create,
+and edit pages are working.
+
+This is sub-prompt 3C of 3 for Phase 3 (frontend continuation).
+
+### Task: Phase 3C — Event Detail + Dashboard + Shared Components
+
+1. Build shared/components/confirm-dialog/confirm-dialog.component.ts:
+   - Standalone, OnPush
+   - input(): title (string), message (string), confirmText (default 'Confirm'),
+     cancelText (default 'Cancel'), variant ('danger' | 'primary')
+   - output(): confirmed: void, cancelled: void
+   - Modal overlay with focus trap (focus first button on open, trap Tab/Shift+Tab)
+   - ESC key dismisses (use host: { '(document:keydown.escape)': 'onCancel()' } — NOT @HostListener)
+   - aria-modal="true", role="dialog", aria-labelledby for the title
+   - Click outside dismisses (only the backdrop, not the dialog itself)
+   - Tailwind styled with smooth fade/scale transition
+
+2. Build shared/components/pagination/pagination.component.ts:
+   - Standalone, OnPush
+   - input.required(): currentPage, totalPages
+   - input(): pageSize (display only)
+   - output(): pageChange: number
+   - Renders Previous, page numbers (with ellipsis for many pages), Next
+   - Disabled state for Previous on page 1, Next on last page
+   - aria-label="Pagination", current page has aria-current="page"
+   - Keyboard accessible (proper button semantics)
+
+3. Build shared/components/empty-state/empty-state.component.ts:
+   - Standalone, OnPush
+   - input(): icon (string emoji or class), title, message, actionLabel?, actionLink?
+   - output(): action: void (when actionLink not provided)
+   - Centered layout, illustration, friendly message, optional CTA
+
+4. Build shared/components/loading-spinner/loading-spinner.component.ts:
+   - Standalone, OnPush
+   - input(): size ('sm' | 'md' | 'lg'), label (default 'Loading...')
+   - aria-live="polite", role="status", visually-hidden label for screen readers
+   - Pure CSS spinner (Tailwind animate-spin)
+
+5. Build shared/components/status-badge/status-badge.component.ts:
+   - Standalone, OnPush
+   - input.required(): status (string)
+   - input(): variant ('default' | 'success' | 'warning' | 'danger' | 'info')
+   - Renders text + colored pill (NEVER color-only — text is the primary indicator)
+
+6. Build shared/pipes/relative-date.pipe.ts:
+   - @Pipe({ name: 'relativeDate' }) (standalone)
+   - Pure pipe; format: "in 3 days", "2 hours ago", "today at 5:00 PM"
+   - Do NOT assume globals like `new Date()` are available — accept current time or
+     use Intl.RelativeTimeFormat with explicit Date input
+
+7. Build features/events/event-detail/event-detail.component.ts:
+   - Standalone, OnPush
+   - Route param signal: id = input.required&lt;string&gt;()
+   - Load event via effect() calling EventService.getEvent(id)
+   - Layout sections (in order):
+     a) Page header: back link, event title, status badges (cancelled/upcoming/past)
+     b) Cover image area (placeholder if no coverImageUrl)
+     c) Quick info grid: type, date/time (with relativeDate pipe), location/virtual,
+        max attendees, organizer
+     d) Description (preserve line breaks, use Angular's safe pipe NOT innerHTML directly)
+     e) RSVP Summary cards: Going (green), Maybe (yellow), Not Going (red), Total (gray)
+        — display the counts from event.rsvpSummary
+     f) Action buttons: Edit (routerLink), Cancel Event (with confirm dialog),
+        Delete (with confirm dialog, danger variant)
+     g) Placeholder section "Invite Links — coming in Phase 4"
+     h) Placeholder section "RSVPs — coming in Phase 4"
+   - Loading and error states
+   - Mobile-first responsive layout (single column → 2 columns on tablet → 3 on desktop)
+   - Fully accessible: proper heading hierarchy, ARIA on action buttons
+
+8. Add to events.routes.ts:
+   { path: ':id', loadComponent: () => import('./event-detail/event-detail.component')
+     .then(m => m.EventDetailComponent) }
+
+9. Build features/dashboard/dashboard.component.ts:
+   - Standalone, OnPush
+   - Welcome message: "Welcome back, {displayName}!" (from AuthService)
+   - 3 stat cards (use signals + computed):
+     * Total Events (count from events list)
+     * Upcoming Events (count where StartDate > now and not cancelled)
+     * Total RSVPs Going (sum across events)
+   - "Upcoming Events" section: next 5 events as cards (build a simple
+     features/dashboard/event-card/event-card.component.ts with input() for the event)
+   - Empty state when no events: friendly onboarding with "Create your first event" CTA
+   - "Create Event" prominent button at top right
+   - Fetch events from EventService on init (use effect)
+
+10. Update app.routes.ts:
+    { path: 'dashboard', canActivate: [authGuard],
+      loadComponent: () => import('./features/dashboard/dashboard.component')
+        .then(m => m.DashboardComponent) }
+
+### Provide:
+- All files in full
+- Final updated app.routes.ts and events.routes.ts
+
+### Constraints
+- Same Angular best practices as 3B (signals, OnPush, native control flow, etc.)
+- Confirm dialog must be reused (do NOT inline confirmations in components)
+- Status badges must always include text — color is supplementary only (a11y)
+- All images use NgOptimizedImage (cover placeholder can be CSS gradient if no image)
+- Add "// Generated by GitHub Copilot" comment above generated blocks
+- AXE-clean, WCAG AA</code></pre>
+</div>
+
+<!-- ========== PHASE 4 ========== -->
+<div class="phase-header page-break" id="phase4">
+    <h2>Phase 4: Invite Links &amp; Public RSVP</h2>
+    <div class="phase-meta">3 sub-prompts &bull; Scope: Shareable invite links &bull; Public RSVP page (no auth) &bull; RSVP management</div>
+</div>
+
+<h3>Goals</h3>
+<ul>
+    <li>Generate cryptographically secure invite tokens</li>
+    <li>Manage invite links (create, list, deactivate)</li>
+    <li>Public event page accessible via token (no login required)</li>
+    <li>RSVP submission form (public, no auth)</li>
+    <li>RSVP list for organizers with filtering</li>
+</ul>
+
+<h3>Verification Checklist</h3>
+<ul>
+    <li>✅ Organizer generates invite link and can copy URL to clipboard</li>
+    <li>✅ Opening invite URL in incognito shows event details (no login prompt)</li>
+    <li>✅ Guest submits RSVP and sees confirmation page</li>
+    <li>✅ Organizer sees new RSVP in the event detail RSVP list</li>
+    <li>✅ Deactivated link returns "link no longer active" message</li>
+    <li>✅ RSVP list supports filtering by status and pagination</li>
+</ul>
+
+<div class="prompt-box" id="p4a">
+    <h4>Sub-Prompt 4A — Backend (Invite Link + RSVP Slices)</h4>
+<pre><code>### Context
+Continuing "EventSync". Phase 3 is complete — full event CRUD works on both
+backend and frontend. The Event entity already has its InviteLinks and Rsvps
+navigation properties from Phase 1.
+
+This is sub-prompt 4A of 3 for Phase 4 (backend only). Frontend is split into 4B and 4C.
+
+### Task: Phase 4A — Invite Links & RSVP Backend
+
+**Configuration:**
+1. Add to appsettings.json:
+   "Frontend": { "BaseUrl": "http://localhost:4200" }
+2. Bind to a strongly-typed FrontendOptions class via IOptions&lt;T&gt; pattern
+
+**Invite Link Slices (all under Features/InviteLinks/):**
+
+3. Common/Services/TokenGenerator.cs (ITokenGenerator interface + implementation):
+   - Method: string GenerateUrlSafeToken(int byteLength = 32)
+   - Use System.Security.Cryptography.RandomNumberGenerator.GetBytes(byteLength)
+   - Convert to Base64, then make URL-safe: replace '+' → '-', '/' → '_', remove '='
+   - Result: ~43-character URL-safe random string
+   - Register as Singleton
+
+4. Features/InviteLinks/CreateInviteLink/:
+   - CreateInviteLinkCommand(Guid EventId, DateTime? ExpiresAt, int? MaxUses)
+     : IRequest&lt;InviteLinkDto&gt;
+   - Validator: ExpiresAt must be in future when provided; MaxUses >= 1 when provided
+   - Handler: verify event ownership, generate token, create InviteLink with IsActive=true,
+     UseCount=0, CreatedAt=UtcNow, save, return InviteLinkDto with full URL
+   - InviteLinkDto: { Id, Token, Url (full URL: {Frontend.BaseUrl}/rsvp/{Token}),
+     ExpiresAt, MaxUses, UseCount, IsActive, CreatedAt }
+   - Endpoint: POST /api/v1/events/{eventId}/invite-links [Authorize], 201 Created
+
+5. Features/InviteLinks/GetInviteLinks/:
+   - GetInviteLinksQuery(Guid EventId) : IRequest&lt;IReadOnlyList&lt;InviteLinkDto&gt;&gt;
+   - Handler: verify event ownership, return all links for event ordered by CreatedAt desc
+   - Endpoint: GET /api/v1/events/{eventId}/invite-links [Authorize]
+
+6. Features/InviteLinks/DeactivateInviteLink/:
+   - DeactivateInviteLinkCommand(Guid LinkId) : IRequest&lt;Unit&gt;
+   - Handler: load link including its Event, verify Event.OrganizerId == currentUser.Id,
+     set IsActive=false, save
+   - Endpoint: DELETE /api/v1/invite-links/{linkId} [Authorize], returns 204
+
+**Update Phase 3 EventDetailDto:**
+
+7. Update GetEventByIdHandler to populate the InviteLinks array (was empty placeholder)
+
+**Public RSVP Slices (no [Authorize] — explicitly use [AllowAnonymous]):**
+
+8. Features/RSVPs/Common/InviteValidationService.cs:
+   - Method: Task&lt;(InviteLink? Link, string? ErrorMessage)&gt; ValidateTokenAsync(
+       string token, CancellationToken ct)
+   - Returns the InviteLink (with Event eagerly loaded) and null error if valid;
+     null link and message if invalid:
+     * Token doesn't exist → "Invite link not found"
+     * IsActive == false → "This invite link has been deactivated"
+     * ExpiresAt != null && ExpiresAt &lt; UtcNow → "This invite link has expired"
+     * MaxUses != null && UseCount >= MaxUses → "This invite link has reached its limit"
+     * Event.IsDeleted → "Event no longer available"
+   - Register as Scoped
+
+9. Features/RSVPs/GetPublicEvent/:
+   - GetPublicEventQuery(string Token) : IRequest&lt;PublicEventDto&gt;
+   - Handler: validate via InviteValidationService;
+     if invalid → throw an InvalidInviteException (your custom exception);
+     else map Event to PublicEventDto and return
+   - PublicEventDto: { Title, Description, EventType (just name+icon), Location, IsVirtual,
+     StartDate, EndDate, OrganizerName (DisplayName only — NEVER email),
+     CoverImageUrl, IsCancelled }
+     ⚠ NO sensitive data: no organizer email, no internal IDs, no event ID
+   - Endpoint: GET /api/v1/invite/{token} [AllowAnonymous]
+   - On InvalidInviteException → return 410 Gone with { message }
+
+10. Features/RSVPs/SubmitRsvp/:
+    - SubmitRsvpCommand(string Token, string GuestName, string? GuestEmail,
+      RsvpStatus Status, string? Note) : IRequest&lt;RsvpConfirmationDto&gt;
+    - Validator: GuestName required (max 100); GuestEmail valid email when provided (max 256);
+      Status must be Going|NotGoing|Maybe (1, 2, or 3 — NOT Pending=0);
+      Note max 500 chars
+    - Handler:
+      * Validate token via InviteValidationService → on invalid throw InvalidInviteException
+      * If GuestEmail provided: check for existing RSVP by (EventId, GuestEmail) — if found,
+        update its Status/Note/UpdatedAt; otherwise create new
+      * Increment InviteLink.UseCount
+      * Capture IpAddress from IHttpContextAccessor (XFF-aware if behind proxy)
+      * Save, return RsvpConfirmationDto
+    - RsvpConfirmationDto: { Id, GuestName, Status, EventTitle, EventDate }
+    - Endpoint: POST /api/v1/invite/{token}/rsvp [AllowAnonymous], 201 Created
+    - RsvpStatus enum: Pending=0, Going=1, NotGoing=2, Maybe=3 (in Data/Entities/Enums/)
+
+11. Features/RSVPs/GetRsvps/:
+    - GetRsvpsQuery(Guid EventId, RsvpStatus? Status, int Page = 1, int PageSize = 20)
+      : IRequest&lt;PagedResult&lt;RsvpDto&gt;&gt;
+    - Handler: verify event ownership, filter by status if provided, paginate
+    - RsvpDto: { Id, GuestName, GuestEmail, Status, Note, RespondedAt, UpdatedAt }
+    - Endpoint: GET /api/v1/events/{eventId}/rsvps [Authorize]
+
+12. Features/RSVPs/GetRsvpSummary/:
+    - GetRsvpSummaryQuery(Guid EventId) : IRequest&lt;RsvpSummaryDto&gt;
+    - Handler: verify event ownership, group by Status, count
+    - RsvpSummaryDto: { Going, NotGoing, Maybe, Total }
+    - Endpoint: GET /api/v1/events/{eventId}/rsvps/summary [Authorize]
+
+### Provide:
+- All files in full
+- Updated GetEventByIdHandler (no longer returns empty inviteLinks array)
+- Sample test requests for the public endpoints (curl)
+
+### Constraints
+- Token generation MUST use System.Security.Cryptography.RandomNumberGenerator
+  (NEVER Random or Guid)
+- Public endpoints must NOT leak sensitive data (no organizer email, no internal IDs)
+- Always verify event ownership in authenticated handlers
+- Use [AllowAnonymous] explicitly on public endpoints (don't rely on absence of [Authorize])
+- Async/await with CancellationToken throughout
+- Add "// Generated by GitHub Copilot" comment, XML docs, file-scoped namespaces
+- Follow Accenture security standards</code></pre>
+</div>
+
+<div class="prompt-box" id="p4b">
+    <h4>Sub-Prompt 4B — Frontend (Invite Link Manager + Services)</h4>
+<pre><code>[Paste the Angular Best Practices Reference block here first]
+
+### Context
+Continuing "EventSync". Phase 4A backend is complete — invite links and RSVP
+endpoints work. EventDetailDto now includes the inviteLinks array.
+
+This is sub-prompt 4B of 3 for Phase 4. The InviteLinkManager goes inside the
+existing EventDetail page. Sub-prompt 4C handles the public RSVP page and RSVP list.
+
+### Task: Phase 4B — Invite Link Manager + Services
+
+1. Create core/models/invite-link.model.ts:
+   InviteLinkDto, CreateInviteLinkRequest
+
+2. Create core/models/rsvp.model.ts:
+   PublicEventDto, SubmitRsvpRequest, RsvpConfirmationDto, RsvpDto, RsvpSummaryDto,
+   RsvpStatus enum (Going=1, NotGoing=2, Maybe=3)
+
+3. Create core/api/invite-link.service.ts (providedIn: 'root'):
+   - createInviteLink(eventId: string, data: CreateInviteLinkRequest): Observable&lt;InviteLinkDto&gt;
+   - getInviteLinks(eventId: string): Observable&lt;InviteLinkDto[]&gt;
+   - deactivateLink(linkId: string): Observable&lt;void&gt;
+   - State signal: links (InviteLinkDto[])
+
+4. Create core/api/rsvp.service.ts (providedIn: 'root'):
+   - getPublicEvent(token: string): Observable&lt;PublicEventDto&gt;  ← does NOT need auth token
+     (note: the auth interceptor should automatically skip when no token is available;
+      ensure this works for public endpoints)
+   - submitRsvp(token: string, data: SubmitRsvpRequest): Observable&lt;RsvpConfirmationDto&gt;
+   - getRsvps(eventId: string, params: { status?: RsvpStatus; page: number; pageSize: number }):
+     Observable&lt;PagedResult&lt;RsvpDto&gt;&gt;
+   - getRsvpSummary(eventId: string): Observable&lt;RsvpSummaryDto&gt;
+
+5. Create shared/services/clipboard.service.ts:
+   - Method: copy(text: string): Promise&lt;boolean&gt;
+   - Use navigator.clipboard.writeText with try/catch fallback to deprecated execCommand
+   - Return true on success, false on failure
+
+6. Create shared/services/toast.service.ts (simple notification system):
+   - Signal: toasts (ToastMessage[])
+   - Methods: success(message), error(message), info(message), dismiss(id)
+   - Auto-dismiss after 4 seconds
+   - ToastMessage: { id, type: 'success' | 'error' | 'info', message }
+
+7. Build shared/components/toast-container/toast-container.component.ts:
+   - Standalone, OnPush
+   - Renders all active toasts in a fixed corner (bottom-right on desktop, bottom on mobile)
+   - aria-live="polite", role="status" for each toast
+   - Smooth enter/exit animations
+   - Click to dismiss + auto-dismiss
+   - Add &lt;app-toast-container/&gt; to AppComponent template
+
+8. Build features/events/event-detail/invite-link-manager/invite-link-manager.component.ts:
+   - Standalone, OnPush
+   - input.required(): eventId (string)
+   - Form to generate new link:
+     * Optional expiresAt (datetime-local)
+     * Optional maxUses (number, min 1)
+     * "Generate Invite Link" button
+   - List of existing links (loaded on init via effect):
+     * Each shows: full URL (truncated with ...), status badge, use count "12 / ∞" or "12 / 50",
+       expiry display, "Copy" button (uses ClipboardService → ToastService.success),
+       "Deactivate" button (with confirm dialog)
+   - Empty state when no links: "No invite links yet. Generate one to start sharing!"
+   - Loading and error states
+
+9. Update features/events/event-detail/event-detail.component.ts:
+   - Replace the "Invite Links — coming in Phase 4" placeholder with
+     &lt;app-invite-link-manager [eventId]="event().id"/&gt;
+   - The "RSVPs — coming in Phase 4" placeholder is replaced in 4C
+
+### Provide:
+- All files in full
+- Updated event-detail.component.ts showing the integration
+
+### Constraints
+- Standalone components, OnPush, signals, inject(), input()/output()
+- Native control flow only (@if, @for)
+- Class bindings (not ngClass)
+- Toast notifications must be screen-reader accessible (aria-live)
+- Copy-to-clipboard must have a graceful fallback for older browsers
+- Confirm dialog for deactivation reuses shared/components/confirm-dialog (from Phase 3C)
+- AXE-clean, WCAG AA
+- Add "// Generated by GitHub Copilot" comment above generated blocks</code></pre>
+</div>
+
+<div class="prompt-box" id="p4c">
+    <h4>Sub-Prompt 4C — Frontend (Public RSVP Page + RSVP List)</h4>
+<pre><code>[Paste the Angular Best Practices Reference block here first]
+
+### Context
+Continuing "EventSync". Phase 4B is complete — invite link manager works,
+RsvpService is in place.
+
+This is sub-prompt 4C of 3 for Phase 4. We now build the PUBLIC RSVP page
+(no authentication) and the RSVP list inside event detail.
+
+⚠ CRITICAL: The /rsvp/:token routes must NOT have authGuard. They are publicly
+accessible — anyone with the token can view and submit.
+
+### Task: Phase 4C — Public RSVP Page + RSVP List
+
+**Public RSVP (no auth required):**
+
+1. Build features/public-rsvp/rsvp-page/rsvp-page.component.ts:
+   - Standalone, OnPush, NO auth guard
+   - token = input.required&lt;string&gt;()  (from route param)
+   - On init (effect): call rsvpService.getPublicEvent(token)
+     * On 410 Gone → show "Link Invalid/Expired" full-page state with friendly message
+     * On success: show event details + RSVP form
+     * On other error: generic error state
+   - Layout (mobile-first, beautiful — this is the product's first impression):
+     a) Hero section: cover image (or gradient placeholder), event title (h1),
+        event type badge with icon
+     b) Event details section: date/time (formatted nicely), location or "Virtual event",
+        organizer name ("Organized by {OrganizerName}"), description
+     c) If event.isCancelled: large red banner "This event has been cancelled" — DON'T show form
+     d) RSVP form (when not cancelled):
+        - Required: Your Name (text input)
+        - Optional: Email (with helper text: "We'll use this to let you update your RSVP later")
+        - REQUIRED: 3 large clickable status cards (radio group):
+          ✓ Going (green check, full color when selected)
+          ? Maybe (yellow question mark)
+          ✗ Not Going (red X)
+          Use proper radio semantics: role="radiogroup", aria-labelledby on group;
+          each card is a label wrapping a hidden radio input — keyboard accessible
+        - Optional: Note textarea (max 500 chars with counter)
+        - Submit button (full-width on mobile, disabled while submitting)
+   - On submit success: router.navigate(['/rsvp', token, 'confirmed'],
+     { state: { confirmation: result } })
+   - Error handling: 410 → already covered above; 429 → "Too many submissions, try later";
+     400 (validation) → show inline errors
+
+2. Build features/public-rsvp/rsvp-confirmation/rsvp-confirmation.component.ts:
+   - Standalone, OnPush, NO auth guard
+   - token = input.required&lt;string&gt;()  (from route param)
+   - Read confirmation from history.state (the data passed via router.navigate state)
+   - If state missing (e.g., direct navigation): show generic "Thank you" message
+     and offer "View event" link
+   - Layout: success checkmark animation, "RSVP recorded!", event title,
+     chosen status badge, "Thank you, {GuestName}"
+   - Placeholder buttons: "Add to Calendar" (Phase 7 enhancement), "View Event"
+
+3. Create features/public-rsvp/public-rsvp.routes.ts:
+   export const PUBLIC_RSVP_ROUTES: Routes = [
+     { path: ':token', loadComponent: () => import('./rsvp-page/rsvp-page.component')
+       .then(m => m.RsvpPageComponent) },
+     { path: ':token/confirmed', loadComponent: () => import('./rsvp-confirmation/...')
+       .then(m => m.RsvpConfirmationComponent) }
+   ];
+
+4. Update app.routes.ts (NOTE: NO authGuard on this route!):
+   { path: 'rsvp', loadChildren: () => import('./features/public-rsvp/public-rsvp.routes')
+     .then(m => m.PUBLIC_RSVP_ROUTES) }
+
+**RSVP List (authenticated, inside Event Detail):**
+
+5. Build features/events/event-detail/rsvp-list/rsvp-list.component.ts:
+   - Standalone, OnPush
+   - input.required(): eventId (string)
+   - Filter signal: statusFilter (RsvpStatus | null = null, meaning All)
+   - Page signal: currentPage (number = 1)
+   - Use computed() to build query params
+   - Use effect() to fetch when params change
+   - Layout:
+     * Filter tabs at top: "All" | "Going" | "Maybe" | "Not Going" with counts
+       (counts come from event.rsvpSummary; reuse data, don't fetch separately)
+     * Desktop: table with columns Name, Email, Status, Note, Responded
+     * Mobile: card layout
+     * Status column uses StatusBadge component (text + color)
+     * Note column truncates with "..." and full text on hover (title attribute) or click
+     * Empty state: "No responses yet. Share your invite link to get started!"
+       with hint that scrolls to InviteLinkManager
+   - Pagination at bottom (reuse Pagination component from Phase 3C)
+
+6. Update features/events/event-detail/event-detail.component.ts:
+   - Replace the "RSVPs — coming in Phase 4" placeholder with
+     &lt;app-rsvp-list [eventId]="event().id"/&gt;
+
+### Provide:
+- All files in full (no placeholders)
+- Final updated event-detail.component.ts and app.routes.ts
+
+### Constraints
+- The /rsvp/:token routes MUST NOT have any guards
+- The auth interceptor must NOT attach a token for the GET /api/v1/invite/{token}
+  and POST /api/v1/invite/{token}/rsvp endpoints (verify your interceptor handles
+  the case where no auth token is available — pass through without Authorization header)
+- Public RSVP page must be beautifully designed — this is what guests see first
+- Status selection (Going/Maybe/Not Going) MUST be keyboard accessible
+  (use radiogroup pattern; arrow keys move between options)
+- Status badges always include text — never color-only (a11y)
+- Mobile-first responsive design
+- All form inputs have associated labels
+- Error messages linked via aria-describedby
+- Loading states with proper aria-live
+- Add "// Generated by GitHub Copilot" comment above generated blocks
+- AXE-clean, WCAG AA</code></pre>
+</div>
+
+<!-- ========== PHASE 5 ========== -->
+<div class="phase-header page-break" id="phase5">
+    <h2>Phase 5: Security Hardening &amp; Polish</h2>
+    <div class="phase-meta">2 sub-prompts &bull; Scope: Rate limiting &bull; Security headers &bull; Error handling &bull; Responsive audit &bull; Accessibility</div>
+</div>
+
+<h3>Goals</h3>
+<ul>
+    <li>Add rate limiting on RSVP endpoint</li>
+    <li>Add HTTP security headers</li>
+    <li>Global exception handling middleware</li>
+    <li>Proper CORS configuration</li>
+    <li>Invite link expiration enforcement</li>
+    <li>Responsive design pass (all pages)</li>
+    <li>Accessibility audit</li>
+    <li>Loading, empty, and error states</li>
+</ul>
+
+<h3>Verification Checklist</h3>
+<ul>
+    <li>✅ 6th RSVP submission within 10 minutes from same IP returns 429</li>
+    <li>✅ Response headers include all security headers</li>
+    <li>✅ API errors return consistent JSON format (never stack traces in production)</li>
+    <li>✅ Expired invite links return 410 with user-friendly message</li>
+    <li>✅ All pages look good on mobile (375px), tablet (768px), desktop (1280px)</li>
+    <li>✅ Lighthouse accessibility score ≥ 90 on all pages</li>
+</ul>
+
+<div class="prompt-box" id="p5a">
+    <h4>Sub-Prompt 5A — Backend (Security Hardening)</h4>
+<pre><code>### Context
+Continuing "EventSync". Phase 4 is complete — invite links and public RSVP work
+end-to-end. The MVP is feature-complete. Now hardening security and error handling.
+
+This is sub-prompt 5A of 2 for Phase 5 (backend only). Frontend polish is in 5B.
+
+### Task: Phase 5A — Backend Security Hardening
+
+1. **Rate Limiting** (using built-in System.Threading.RateLimiting):
+   - Add ASP.NET Core RateLimiter middleware in Program.cs
+   - Define a fixed window policy named "RsvpLimit":
+     * Window: 10 minutes
+     * Permit limit: 5 requests
+     * Partition by IP address (use HttpContext.Connection.RemoteIpAddress.ToString();
+       handle XFF header if you'll deploy behind a proxy)
+     * Queue limit: 0 (reject immediately when over limit)
+   - Apply to POST /api/v1/invite/{token}/rsvp endpoint only via .RequireRateLimiting("RsvpLimit")
+   - On rejection: return 429 with JSON body:
+     { "message": "Too many requests. Please try again later.", "retryAfter": &lt;seconds&gt; }
+     and add Retry-After header
+   - Other endpoints are NOT rate limited
+
+2. **Custom Exception Types** (Common/Exceptions/):
+   - InvalidInviteException(string message) → maps to 410 Gone (used by Phase 4)
+   - NotFoundException(string entity) → maps to 404
+   - ForbiddenAccessException() → maps to 403
+   - (FluentValidation's ValidationException is already used → maps to 400)
+
+3. **Global Exception Handling Middleware** (Common/Middleware/ExceptionHandlingMiddleware.cs):
+   - Catches all unhandled exceptions
+   - Logs the full exception with traceId via ILogger
+   - Returns standardized RFC 7807 ProblemDetails JSON:
+     { "type", "title", "status", "detail", "traceId" }
+   - Maps:
+     * ValidationException → 400 with errors object
+     * UnauthorizedAccessException, ForbiddenAccessException → 403
+     * NotFoundException → 404
+     * InvalidInviteException → 410
+     * Anything else → 500 with generic message
+   - In Development: include exception details (stack trace, inner exception)
+   - In Production: ONLY generic "An error occurred" — never expose internals
+   - Set Content-Type to application/problem+json
+   - Register early in pipeline (before routing)
+
+4. **HTTP Security Headers Middleware** (Common/Middleware/SecurityHeadersMiddleware.cs):
+   - Add response headers (only in non-Development if HSTS):
+     * Strict-Transport-Security: max-age=31536000; includeSubDomains
+     * X-Content-Type-Options: nosniff
+     * X-Frame-Options: DENY
+     * Content-Security-Policy (configurable via options):
+       default-src 'self';
+       script-src 'self';
+       style-src 'self' 'unsafe-inline';
+       img-src 'self' data: https:;
+       connect-src 'self' https://{Auth0:Domain}
+     * Referrer-Policy: strict-origin-when-cross-origin
+     * Permissions-Policy: camera=(), microphone=(), geolocation=()
+     * Remove Server header
+   - Register after exception middleware, before authentication
+
+5. **CORS Hardening:**
+   - Read allowed origins from configuration: AllowedOrigins (string array)
+     "AllowedOrigins": [ "http://localhost:4200" ]
+   - Update Program.cs CORS policy:
+     * AllowedOrigins from config (NEVER use wildcard *)
+     * AllowedMethods: GET, POST, PUT, PATCH, DELETE
+     * AllowedHeaders: Authorization, Content-Type
+     * AllowCredentials: true
+   - Place app.UseCors() between UseRouting and UseAuthentication
+
+6. **Verify Invite Link Validation Coverage:**
+   - Audit InviteValidationService from Phase 4A — confirm it checks:
+     a) Token exists, b) IsActive, c) ExpiresAt is null OR &gt; UtcNow,
+     d) MaxUses is null OR UseCount &lt; MaxUses, e) Event.IsDeleted == false,
+     f) Add: Event.IsCancelled — if cancelled, still allow GET (to show "cancelled" message)
+        but reject POST RSVP submission with appropriate message
+   - Make sure both GET /invite/{token} and POST /invite/{token}/rsvp call this service
+
+7. **Production Configuration Hardening:**
+   - In appsettings.Production.json (template):
+     * Remove development-only settings
+     * Add placeholder for connection string (will be overridden by env vars in Phase 7)
+   - In Program.cs Production branch: Enforce HTTPS redirection, HSTS
+
+8. **Update Program.cs middleware order** (final order):
+   ExceptionHandling → SecurityHeaders → HttpsRedirection → Routing → CORS →
+   Authentication → Authorization → RateLimiter → MapEndpoints
+
+### Provide:
+- All middleware files in full
+- Final Program.cs in full showing the complete middleware pipeline
+- Updated appsettings files
+- Sample test demonstrating 429 response after 6 RSVP attempts
+
+### Constraints
+- Security headers must NOT break Auth0 redirects or Angular API calls — test CSP carefully
+- Rate limiting applies ONLY to public RSVP endpoint, NOT authenticated endpoints
+- Error messages exposed to clients must be helpful but never reveal internals
+- Use ILogger structured logging (named placeholders, not string interpolation)
+- File-scoped namespaces, XML docs, "// Generated by GitHub Copilot"
+- Follow Accenture security standards including HTTP Security Headers Standard</code></pre>
+</div>
+
+<div class="prompt-box" id="p5b">
+    <h4>Sub-Prompt 5B — Frontend (Error Handling, Responsive, A11y Polish)</h4>
+<pre><code>[Paste the Angular Best Practices Reference block here first]
+
+### Context
+Continuing "EventSync". Phase 5A is complete — backend has rate limiting,
+security headers, global exception handler returning RFC 7807 ProblemDetails.
+
+This is sub-prompt 5B of 2 for Phase 5 (frontend polish).
+
+### Task: Phase 5B — Frontend Error Handling, Responsive Design, A11y
+
+1. **Global Error Handler** (core/error/global-error-handler.ts):
+   - Implements Angular ErrorHandler
+   - Logs errors to console
+   - Shows user-friendly toast via ToastService.error()
+   - Don't show toast for HTTP errors (those are handled by interceptor)
+   - Register in app.config.ts via { provide: ErrorHandler, useClass: GlobalErrorHandler }
+
+2. **HTTP Error Interceptor** (core/error/error.interceptor.ts):
+   - Functional HttpInterceptorFn
+   - Catches errors and shows appropriate toast:
+     * 401 → ToastService.error('Session expired. Please log in again.')
+              + redirect to /login (preserve return URL)
+     * 403 → ToastService.error('You don\\'t have permission to do that.')
+     * 404 → ToastService.error('Not found.')
+     * 410 → re-throw (let component handle for invite-link-specific UX)
+     * 429 → ToastService.error('Too many attempts. Please wait a moment.')
+     * 0 (network error) → ToastService.error('Unable to connect. Check your internet.')
+     * 5xx → ToastService.error('Something went wrong. Please try again.')
+     * 400 (validation) → re-throw (let forms display field-level errors)
+   - Register in app.config.ts AFTER authInterceptor:
+     withInterceptors([authInterceptor, errorInterceptor])
+
+3. **Loading States** — Add to ALL pages that fetch data:
+   - Use existing LoadingSpinner component from Phase 3C
+   - Pattern: signal `loading = signal(false)`; show spinner when true
+   - Pages to update: EventList, EventDetail, Dashboard, RsvpPage, RsvpList,
+     InviteLinkManager, EditEvent
+   - For lists, optionally use skeleton placeholders for better perceived performance
+
+4. **Empty States** — Use the EmptyState component from Phase 3C:
+   - EventList (no events): "No events yet. Create your first event!" with CTA
+   - RsvpList (no responses): "No responses yet. Share your invite link!"
+   - Dashboard (new user, no events): onboarding-style large CTA
+   - InviteLinkManager (no links): "No invite links yet. Generate one to start sharing!"
+
+5. **Error States** — In addition to toasts, render inline errors when relevant:
+   - When initial page data fails to load: show centered error with retry button
+   - Network errors: "Unable to connect. Check your internet connection." + retry
+   - Generic: "Something went wrong. Please try again."
+
+6. **Responsive Design Audit** — Review and fix at these breakpoints:
+   - Mobile: 375px (iPhone SE) — single column, hamburger menu, no horizontal scroll
+   - Tablet: 768px (iPad) — 2-column grids where appropriate
+   - Desktop: 1280px+ — full multi-column layouts, sidebar nav
+   - Use Tailwind breakpoints: sm: md: lg: xl:
+   - Test ALL pages: Login, Dashboard, EventList, CreateEvent, EditEvent, EventDetail,
+     RsvpPage (CRITICAL — this is the public face), RsvpConfirmation
+   - Convert header to mobile hamburger menu (use signal for menu open state)
+
+7. **Accessibility Audit** — Fix issues across all components:
+   - Heading hierarchy: each page has exactly one &lt;h1&gt;, no skipped levels
+   - Skip Navigation link at top of AppComponent: "Skip to main content" → #main
+   - All interactive elements focusable; visible focus indicator (Tailwind focus:ring)
+   - All images use NgOptimizedImage with descriptive alt (or alt="" if decorative)
+   - All form inputs have associated &lt;label for=...&gt; or aria-label
+   - Error messages linked via aria-describedby="errorId"
+   - Color contrast ≥ 4.5:1 for text, ≥ 3:1 for UI components (verify in Tailwind config)
+   - Confirm dialog: focus trap, ESC closes, aria-modal="true", role="dialog"
+   - Status badges always include text — color is supplementary
+   - Use aria-live="polite" on dynamic content (toasts, loading states)
+   - Tables have proper &lt;caption&gt;, scope="col" on th, scope="row" if needed
+   - Buttons with only icons have aria-label
+
+8. **Run AXE in Dev** — Add @axe-core/angular for development-only auditing:
+   - Install as devDependency
+   - Conditionally enable in main.ts when !environment.production
+   - Verify zero violations on all pages
+
+9. **Lighthouse Verification:**
+   - Run Lighthouse on each major page
+   - Target: Accessibility ≥ 90, Best Practices ≥ 90
+   - Fix any flagged issues
+
+### Provide:
+- All new and updated files in full
+- Updated app.config.ts showing the full provider chain
+- Updated AppComponent with skip-nav link
+- A small markdown checklist of pages audited (for the developer to track)
+
+### Constraints
+- All Angular best practices from the reference block
+- No HostBinding/HostListener — use host: { ... } object instead
+- Signals for all state, including UI state (loading, menu open, etc.)
+- Native control flow (@if, @for, @switch) only
+- class/style bindings, not ngClass/ngStyle
+- AXE-clean is NON-NEGOTIABLE (the constraint says "MUST pass all AXE checks")
+- WCAG AA minimum (focus management, color contrast, ARIA)
+- Add "// Generated by GitHub Copilot" comment above generated blocks
+- Follow Accenture accessibility standards (WCAG 2.2 AA)</code></pre>
+</div>
+
+<!-- ========== PHASE 6 ========== -->
+<div class="phase-header page-break" id="phase6">
+    <h2>Phase 6: Dockerize (Local Containers)</h2>
+    <div class="phase-meta">1 sub-prompt &bull; Scope: Dockerfile for API &bull; Dockerfile for Angular &bull; docker-compose.yml &bull; Nginx reverse proxy</div>
+</div>
+
+<h3>Goals</h3>
+<ul>
+    <li>Containerize the .NET API</li>
+    <li>Containerize the Angular SPA (via Nginx)</li>
+    <li>Run SQL Server in a container</li>
+    <li>Orchestrate with docker-compose.yml</li>
+    <li>Single command to start everything: <code>docker-compose up</code></li>
+</ul>
+
+<h3>Verification Checklist</h3>
+<ul>
+    <li>✅ <code>docker-compose up --build</code> starts all 4 services</li>
+    <li>✅ Angular accessible at http://localhost</li>
+    <li>✅ API accessible at http://localhost/api</li>
+    <li>✅ Database persists data across restarts (volume)</li>
+    <li>✅ EF Core migrations run automatically on API startup</li>
+</ul>
+
+<div class="prompt-box">
+    <h4>Sub-Prompt 6 — Dockerize (single prompt; mostly config files)</h4>
+<pre><code>### Context
+Continuing "EventSync". Phase 5 is complete — the app is fully functional with
+security hardening, responsive design, and accessibility. Currently runs on bare
+metal: `ng serve` + `dotnet run` + SQL Server LocalDB.
+
+I am new to Docker. Please explain each file and each line's purpose.
+
+### Task: Phase 6 — Dockerize for Local Development
+
+**Files to create:**
+
+1. server/Dockerfile:
+   - Multi-stage build: (1) restore + build, (2) publish, (3) runtime
+   - Use .NET 10 SDK image for build, .NET 10 ASP.NET runtime for final
+   - Expose port 5000
+   - ENTRYPOINT pointing to EventSync.Api.dll
+   - Explain each RUN/COPY/FROM line with comments
+
+2. client/Dockerfile:
+   - Multi-stage build: (1) npm install + ng build, (2) copy dist to nginx
+   - Use node:lts-alpine for build, nginx:alpine for final
+   - Copy custom nginx.conf for SPA routing
+
+3. client/nginx.conf:
+   - Serve Angular SPA with fallback to index.html for client-side routing
+   - Gzip compression enabled
+   - Cache static assets (js, css, images) for 1 year
+   - No-cache for index.html
+
+4. docker-compose.yml at workspace root:
+   - Service: db
+     - Image: mcr.microsoft.com/mssql/server:2022-latest
+     - SA password from .env file
+     - Port: 1433 (exposed for debugging, optional)
+     - Volume: sqldata for persistence
+     - Health check: /opt/mssql-tools18/bin/sqlcmd
+   - Service: api
+     - Build from server/Dockerfile
+     - Environment variables: ConnectionString, Auth0 settings, CORS origins
+     - Depends on: db (with health check condition)
+     - Port: 5000 (internal)
+   - Service: web
+     - Build from client/Dockerfile
+     - Port: 80 (internal)
+   - Service: proxy (nginx)
+     - Nginx reverse proxy routing:
+       /api/* → api:5000
+       /* → web:80
+     - Port: 80:80 on host
+     - Depends on: api, web
+
+5. proxy/nginx.conf:
+   - Reverse proxy config
+   - Route /api to API service, everything else to Angular service
+   - WebSocket support for SignalR (future)
+
+6. .env (at workspace root, add to .gitignore):
+   - SA_PASSWORD=YourStr0ngP@ssword!
+   - AUTH0_DOMAIN=your-tenant.auth0.com
+   - AUTH0_AUDIENCE=https://eventsync-api
+   - FRONTEND_URL=http://localhost
+
+7. Update server/EventSync.Api/Program.cs:
+   - Auto-run EF Core migrations on startup (only in Docker/Production)
+   - Read connection string and Auth0 settings from environment variables
+
+8. .dockerignore files for both server/ and client/
+
+### Provide:
+- Step-by-step instructions to install Docker Desktop on Windows
+- Command to build and start everything: docker-compose up --build
+- Command to stop: docker-compose down
+- Command to reset database: docker-compose down -v
+- Troubleshooting tips for common Docker issues on Windows
+
+### Constraints
+- SQL Server SA password must be strong (Docker will reject weak passwords)
+- Never commit .env file to git
+- API must wait for SQL Server to be healthy before starting
+- Angular environment.prod.ts must use relative URLs (/api/v1) not localhost
+- Follow Accenture standards</code></pre>
+</div>
+
+<!-- ========== PHASE 7 ========== -->
+<div class="phase-header page-break" id="phase7">
+    <h2>Phase 7: Deploy to Azure</h2>
+    <div class="phase-meta">2 sub-prompts &bull; Scope: Azure App Service &bull; Azure SQL &bull; Azure Static Web Apps &bull; GitHub Actions CI/CD</div>
+</div>
+
+<h3>Goals</h3>
+<ul>
+    <li>Deploy .NET API to Azure App Service (Free tier)</li>
+    <li>Deploy Angular SPA to Azure Static Web Apps (Free tier)</li>
+    <li>Provision Azure SQL Database (Free offer)</li>
+    <li>Set up GitHub Actions for automated CI/CD</li>
+    <li>Configure Auth0 for production URLs</li>
+</ul>
+
+<h3>Verification Checklist</h3>
+<ul>
+    <li>✅ API runs at https://eventsync-api.azurewebsites.net</li>
+    <li>✅ Angular SPA runs at https://eventsync.azurestaticapps.net</li>
+    <li>✅ Database migrations applied to Azure SQL</li>
+    <li>✅ Auth0 login/logout works with Azure URLs</li>
+    <li>✅ Push to main triggers automated build + deploy</li>
+</ul>
+
+<div class="prompt-box" id="p7a">
+    <h4>Sub-Prompt 7A — Azure Resources + Database Migration</h4>
+<pre><code>### Context
+Continuing "EventSync". The app is fully functional and Dockerized locally.
+Now deploying to Azure. I am NEW to Azure — provide click-by-click Portal steps
+AND Azure CLI alternatives for each.
+
+This is sub-prompt 7A of 2 for Phase 7. CI/CD setup is in 7B.
+
+### Task: Phase 7A — Azure Account, Resources, and Database Migration
+
+**Part 1: Azure Account Setup**
+1. Walk me through creating a free Azure account (azure.microsoft.com/free):
+   - What I get: $200 credit (30 days), 12-month free services, always-free services
+   - Required: credit card for verification (won't be charged unless I upgrade)
+   - Link my email/Microsoft account
+
+**Part 2: Resource Group**
+2. Create a Resource Group:
+   - Name: eventsync-rg
+   - Region: choose nearest (e.g., East US, Southeast Asia, etc.)
+   - Provide both Portal steps (click-by-click) AND Azure CLI command
+
+**Part 3: Azure SQL Database (Free Offer)**
+3. Create Azure SQL Server + Database:
+   - Server name: eventsync-sql-{unique-suffix}
+   - Database name: EventSync
+   - Pricing tier: select the FREE OFFER (100K vCore seconds/month, 32 GB) —
+     explain how to find this option (it's not the default; look for "Apply offer")
+   - Authentication: SQL Authentication (admin login + password) — store these securely
+   - Firewall rules:
+     a) Allow Azure services to access this server (toggle ON)
+     b) Add my current client IP
+   - Save the connection string in the format:
+     Server=tcp:eventsync-sql-{suffix}.database.windows.net,1433;
+     Initial Catalog=EventSync;Persist Security Info=False;User ID={admin};
+     Password={pwd};MultipleActiveResultSets=False;Encrypt=True;
+     TrustServerCertificate=False;Connection Timeout=30;
+
+**Part 4: Azure App Service (for .NET API)**
+4. Create App Service:
+   - Name: eventsync-api-{unique-suffix}
+   - Publish: Code
+   - Runtime: .NET 10 (LTS)
+   - Operating System: Linux (cheaper, more reliable for .NET)
+   - Region: same as resource group
+   - Plan: Create new App Service Plan with F1 (Free) tier
+5. Configure Application Settings (in App Service → Configuration → Application Settings):
+   - ConnectionStrings__DefaultConnection = {Azure SQL connection string from step 3}
+   - Auth0__Domain = {your Auth0 domain}
+   - Auth0__Audience = https://eventsync-api
+   - AllowedOrigins__0 = https://{your-static-web-app-url}.azurestaticapps.net
+   - Frontend__BaseUrl = https://{your-static-web-app-url}.azurestaticapps.net
+   - ASPNETCORE_ENVIRONMENT = Production
+6. Configure CORS in App Service to also allow your static web app URL (Portal: API → CORS)
+
+**Part 5: Azure Static Web App (for Angular SPA)**
+7. Create Static Web App:
+   - Name: eventsync-web
+   - Plan: Free
+   - Region: nearest
+   - Source: GitHub (will auto-create the workflow YAML in 7B; for now, choose "Other" if
+     you want to set up CI/CD manually in 7B)
+   - Build preset: Angular
+   - App location: /client
+   - Output location: dist/client/browser
+   - API location: leave empty (we use a separate App Service)
+8. After creation, note the auto-generated URL:
+   https://{name}-{random}.azurestaticapps.net
+
+**Part 6: Database Migration**
+9. Apply EF Core migrations to Azure SQL — provide BOTH options:
+
+   Option A (Recommended for Phase 7) — Auto-migrate on startup:
+   - Update server/EventSync.Api/Program.cs to apply pending migrations on startup
+     ONLY in Production environment:
+     if (app.Environment.IsProduction()) {
+         using var scope = app.Services.CreateScope();
+         var db = scope.ServiceProvider.GetRequiredService&lt;AppDbContext&gt;();
+         await db.Database.MigrateAsync();
+     }
+   - Pros: zero manual steps after deployment
+   - Cons: slow startup if many migrations; not best for high-traffic production
+
+   Option B — Run migrations manually via Azure CLI:
+   - Install: dotnet tool install --global dotnet-ef
+   - From server/EventSync.Api directory:
+     dotnet ef database update --connection "{Azure SQL connection string}"
+   - Pros: separation of deploy and migrate; safer for production
+   - Cons: extra manual step
+
+   Choose Option A for now (simplicity). We can switch to B later.
+
+10. Update appsettings.Production.json to read connection string from environment
+
+**Part 7: Verification**
+11. Walk me through manually testing:
+    - Hit https://eventsync-api-{suffix}.azurewebsites.net/health → should return 200
+    - Open https://eventsync-api-{suffix}.azurewebsites.net/swagger → should show API docs
+    - Connect to Azure SQL via Azure Data Studio:
+      Server: eventsync-sql-{suffix}.database.windows.net
+      Database: EventSync
+      Verify all tables exist with seed EventTypes data
+    - Check Application Logs (App Service → Log stream)
+
+**Part 8: Cost Estimate**
+12. Provide expected monthly cost for first 12 months:
+    - App Service F1: $0
+    - Static Web App: $0 (free tier)
+    - Azure SQL Free Offer: $0 (within 100K vCore seconds)
+    - After 12 months / over free quota: estimated $5–15/month
+
+### Provide:
+- Click-by-click Azure Portal steps (with section names matching current Portal UI)
+- Azure CLI alternative commands for each step
+- Final updated Program.cs (with Production migration logic)
+- Final updated appsettings.Production.json
+- A "smoke test" checklist for after deployment
+
+### Constraints
+- Stay within free tier limits
+- All secrets stored in Azure App Settings (NEVER in source code or appsettings.*.json)
+- HTTPS enforced (Azure handles this automatically with managed certs)
+- Follow Accenture security standards</code></pre>
+</div>
+
+<div class="prompt-box" id="p7b">
+    <h4>Sub-Prompt 7B — GitHub Actions CI/CD + Auth0 Production Configuration</h4>
+<pre><code>### Context
+Continuing "EventSync". Phase 7A is complete — Azure resources are provisioned,
+the .NET API is deployed manually, and Angular Static Web App is created.
+Database migrations are applied.
+
+This is sub-prompt 7B of 2 for Phase 7 — automating deployment via GitHub Actions
+and configuring Auth0 for production.
+
+Workspace structure:
+- /server  → .NET API
+- /client  → Angular SPA
+- Repository hosted on GitHub at: {your-github-repo-url}
+
+### Task: Phase 7B — CI/CD + Auth0 Production
+
+**Part 1: Auth0 Production Configuration**
+1. In the Auth0 Dashboard → Applications → EventSync (SPA), update:
+   - Allowed Callback URLs: ADD https://{static-web-app-url}/auth/callback
+     (keep localhost for local dev, comma-separate)
+   - Allowed Logout URLs: ADD https://{static-web-app-url}
+   - Allowed Web Origins: ADD https://{static-web-app-url}
+2. Update client/src/environments/environment.prod.ts:
+   - apiUrl: 'https://eventsync-api-{suffix}.azurewebsites.net/api/v1'
+   - auth0.domain: '{your Auth0 domain}'
+   - auth0.clientId: '{your Auth0 client ID}'
+   - auth0.authorizationParams.redirect_uri: window.location.origin + '/auth/callback'
+   - auth0.authorizationParams.audience: 'https://eventsync-api'
+
+**Part 2: GitHub Secrets Setup**
+3. Walk me through adding repository secrets (GitHub repo → Settings → Secrets → Actions):
+   - AZURE_WEBAPP_PUBLISH_PROFILE: download from App Service → "Get publish profile"
+   - AZURE_STATIC_WEB_APPS_API_TOKEN: from Static Web App → "Manage deployment token"
+4. Explain what each secret does and why they should be in GitHub (not in code)
+
+**Part 3: Backend CI/CD Workflow**
+5. Create .github/workflows/api-deploy.yml:
+   - Trigger: push to main, only when files in server/** change
+     paths: [ 'server/**', '.github/workflows/api-deploy.yml' ]
+   - Allow manual trigger via workflow_dispatch
+   - Jobs:
+     a) build:
+        - Checkout code
+        - Setup .NET 10 SDK
+        - Restore dependencies (working-directory: ./server)
+        - Build (Release configuration)
+        - Run any tests (dotnet test, even if no tests yet — placeholder)
+        - Publish to ./publish folder
+        - Upload artifact
+     b) deploy:
+        - Needs: build
+        - Download artifact
+        - Deploy using azure/webapps-deploy@v3 with:
+          app-name: eventsync-api-{suffix}
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          package: ./publish
+   - Use latest actions versions
+   - Cache NuGet packages for faster builds
+
+**Part 4: Frontend CI/CD Workflow**
+6. Create .github/workflows/web-deploy.yml:
+   - Trigger: push to main, paths: [ 'client/**', '.github/workflows/web-deploy.yml' ]
+   - Also trigger on pull_request (for preview environments)
+   - Job:
+     - Checkout code
+     - Setup Node.js (v20+ LTS)
+     - Cache npm dependencies
+     - Install: npm ci (working-directory: ./client)
+     - Build: npm run build -- --configuration=production
+     - Deploy using Azure/static-web-apps-deploy@v1 with:
+       azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+       repo_token: ${{ secrets.GITHUB_TOKEN }}
+       app_location: '/client'
+       output_location: 'dist/client/browser'
+       skip_app_build: true   (we already built it above)
+       action: 'upload'
+   - Static Web Apps automatically creates preview URLs for pull requests
+
+**Part 5: Verification After First Deploy**
+7. Walk me through:
+   a) Commit and push a small change to main
+   b) Watch GitHub Actions run (Repository → Actions tab)
+   c) Verify deployment succeeded
+   d) Open the static web app URL → should load Angular app
+   e) Click "Sign In" → should redirect to Auth0 → log in → land on dashboard
+   f) Create an event → verify it persists (refresh, still there)
+   g) Generate an invite link → copy the URL → open in incognito → should
+      show RSVP page WITHOUT login prompt
+   h) Submit an RSVP → confirm success page shows → verify in organizer view
+
+**Part 6: Post-Deployment Operations**
+8. Provide guidance on:
+   - Viewing API logs: Portal → App Service → Log stream
+   - Viewing Static Web App logs: Portal → Static Web App → Logs
+   - Connecting to Azure SQL from Azure Data Studio for debugging
+   - Rolling back: Portal → App Service → Deployment slots OR redeploy old commit
+   - Setting up Application Insights (free tier) for telemetry — quick steps
+
+**Part 7: Optional: Custom Domain (if you have one)**
+9. Brief steps to add a custom domain to:
+   - Static Web App (Portal → Custom domains)
+   - App Service (if API needs a custom domain too)
+   - Free TLS certs handled by Azure
+
+### Provide:
+- Both YAML workflow files in full
+- Updated environment.prod.ts in full
+- A clean step-by-step Auth0 dashboard walkthrough
+- Final smoke-test checklist
+
+### Constraints
+- Use latest stable versions of actions (azure/webapps-deploy@v3, etc.)
+- Use npm ci (not npm install) in CI for reproducibility
+- Cache dependencies for faster builds
+- Never echo secrets in workflow logs
+- Follow Accenture DevSecOps Security Standard
+- All secrets in GitHub Secrets, never in repository files
+- Add "// Generated by GitHub Copilot" comment in any TS code generated</code></pre>
+</div>
+
+<!-- ======================== PART III: HOSTING & DEPLOYMENT ======================== -->
+
+<h1 class="page-break">Part III — Hosting &amp; Deployment</h1>
+
+<h2 id="hosting">Hosting Comparison &amp; Recommendation</h2>
+
+<h3>Recommendation: Azure (Best Fit)</h3>
+<p>Azure has the strongest native support for .NET and SQL Server. This means less friction, better tooling, and the most generous free tiers for this exact stack.</p>
+
+<table>
+    <thead>
+        <tr><th>Criteria</th><th>Azure</th><th>AWS</th><th>Self-Hosted (Docker)</th></tr>
+    </thead>
+    <tbody>
+        <tr><td>.NET support</td><td>Native, first-class</td><td>Good (ECS/Lambda)</td><td>Full control</td></tr>
+        <tr><td>SQL Server</td><td>Azure SQL — managed</td><td>RDS SQL Server</td><td>Docker container</td></tr>
+        <tr><td>Free tier</td><td>12 months + always-free</td><td>12 months + always-free</td><td>Hardware cost</td></tr>
+        <tr><td>Deploy complexity</td><td>Low</td><td>Medium</td><td>Medium</td></tr>
+        <tr><td>SSL/TLS</td><td>Free (managed certs)</td><td>Free (ACM)</td><td>Let's Encrypt</td></tr>
+        <tr><td>Cost at low traffic</td><td><strong>$0–5/mo</strong></td><td><strong>$15–30/mo</strong></td><td><strong>$5–10/mo (VPS)</strong></td></tr>
+    </tbody>
+</table>
+
+<h3>Azure Free Tier Setup</h3>
+<table>
+    <thead>
+        <tr><th>Service</th><th>Tier</th><th>Cost</th><th>Purpose</th></tr>
+    </thead>
+    <tbody>
+        <tr><td>Azure App Service</td><td>F1 (Free) → B1 ($13/mo)</td><td><strong>$0</strong> to start</td><td>.NET 10 API</td></tr>
+        <tr><td>Azure Static Web Apps</td><td>Free tier</td><td><strong>$0</strong></td><td>Angular SPA (CDN, SSL)</td></tr>
+        <tr><td>Azure SQL Database</td><td>Free offer (100K vCore s/mo)</td><td><strong>$0</strong> to start</td><td>SQL Server database</td></tr>
+    </tbody>
+</table>
+
+<div class="callout success">
+    <strong>Total MVP cost: $0/month</strong> within free tier limits — sufficient for development and early users.
+</div>
+
+<h3>Recommended Phased Approach</h3>
+<table>
+    <thead>
+        <tr><th>Phase</th><th>Hosting</th><th>Why</th></tr>
+    </thead>
+    <tbody>
+        <tr><td>Development</td><td>Local (ng serve + dotnet run + LocalDB)</td><td>Fast iteration, zero cost</td></tr>
+        <tr><td>Staging / Demo</td><td>Azure Free Tier</td><td>Zero cost, real cloud</td></tr>
+        <tr><td>Production</td><td>Azure B1 + SQL Basic (~$18/mo)</td><td>Fully managed, scales up</td></tr>
+    </tbody>
+</table>
+
+<h2 id="docker-compose">Docker Compose Structure</h2>
+<div class="diagram">
+docker-compose.yml
+├── services:
+│   ├── db       → SQL Server 2022 (mcr.microsoft.com/mssql/server:2022-latest)
+│   ├── api      → .NET 10 API (custom Dockerfile, port 5000)
+│   ├── web      → Angular (nginx:alpine serving built SPA, port 80)
+│   └── proxy    → Nginx reverse proxy (port 80 → api + web)
+├── volumes:
+│   └── sqldata  → Persistent SQL Server data
+└── networks:
+    └── eventsync → Internal bridge network</div>
+
+<h2 id="azure-setup">Azure Deployment Plan</h2>
+<p>See <strong>Phase 7</strong> in Part II for the complete step-by-step Azure deployment prompt with click-by-click instructions.</p>
+
+<!-- ======================== APPENDIX ======================== -->
+
+<h1 class="page-break">Appendix</h1>
+
+<h2>A. Tech Stack Summary</h2>
+<table>
+    <thead>
+        <tr><th>Layer</th><th>Technology</th><th>Version</th></tr>
+    </thead>
+    <tbody>
+        <tr><td>Frontend Framework</td><td>Angular</td><td>20+ (latest)</td></tr>
+        <tr><td>Frontend Styling</td><td>Tailwind CSS</td><td>v4+</td></tr>
+        <tr><td>Backend Framework</td><td>ASP.NET Core (Minimal APIs)</td><td>.NET 10</td></tr>
+        <tr><td>Backend Architecture</td><td>Vertical Slice + MediatR</td><td>—</td></tr>
+        <tr><td>ORM</td><td>Entity Framework Core</td><td>10.x</td></tr>
+        <tr><td>Validation</td><td>FluentValidation</td><td>latest</td></tr>
+        <tr><td>Mapping</td><td>Mapster (or manual)</td><td>latest</td></tr>
+        <tr><td>Database</td><td>SQL Server</td><td>2022</td></tr>
+        <tr><td>Authentication</td><td>Auth0</td><td>Free tier</td></tr>
+        <tr><td>Hosting</td><td>Azure (Free → B1)</td><td>—</td></tr>
+        <tr><td>CI/CD</td><td>GitHub Actions</td><td>—</td></tr>
+        <tr><td>Containerization</td><td>Docker + Docker Compose</td><td>latest</td></tr>
+    </tbody>
+</table>
+
+<h2>B. NuGet Packages</h2>
+<table>
+    <thead>
+        <tr><th>Package</th><th>Purpose</th></tr>
+    </thead>
+    <tbody>
+        <tr><td><code>MediatR</code></td><td>CQRS-lite, command/query dispatch</td></tr>
+        <tr><td><code>FluentValidation</code></td><td>Request validation</td></tr>
+        <tr><td><code>FluentValidation.AspNetCore</code></td><td>ASP.NET Core integration</td></tr>
+        <tr><td><code>Microsoft.EntityFrameworkCore.SqlServer</code></td><td>EF Core SQL Server provider</td></tr>
+        <tr><td><code>Microsoft.EntityFrameworkCore.Design</code></td><td>EF Core migration tooling</td></tr>
+        <tr><td><code>Mapster</code></td><td>Object-to-object mapping</td></tr>
+        <tr><td><code>Microsoft.AspNetCore.Authentication.JwtBearer</code></td><td>Auth0 JWT validation</td></tr>
+    </tbody>
+</table>
+
+<h2>C. npm Packages</h2>
+<table>
+    <thead>
+        <tr><th>Package</th><th>Purpose</th></tr>
+    </thead>
+    <tbody>
+        <tr><td><code>@auth0/auth0-angular</code></td><td>Auth0 SDK for Angular</td></tr>
+        <tr><td><code>tailwindcss</code></td><td>Utility-first CSS framework</td></tr>
+        <tr><td><code>@tailwindcss/forms</code></td><td>Form element styling plugin</td></tr>
+    </tbody>
+</table>
+
+<h2>D. Development Workflow Summary</h2>
+<table>
+    <thead>
+        <tr><th>Phase</th><th>Focus</th><th>Docker?</th><th>Azure?</th></tr>
+    </thead>
+    <tbody>
+        <tr><td>Phase 1</td><td>Project Setup &amp; Infrastructure</td><td>No</td><td>No</td></tr>
+        <tr><td>Phase 2</td><td>Authentication (Auth0)</td><td>No</td><td>No</td></tr>
+        <tr><td>Phase 3</td><td>Event CRUD</td><td>No</td><td>No</td></tr>
+        <tr><td>Phase 4</td><td>Invite Links &amp; Public RSVP</td><td>No</td><td>No</td></tr>
+        <tr><td>Phase 5</td><td>Security Hardening &amp; Polish</td><td>No</td><td>No</td></tr>
+        <tr><td>Phase 6</td><td>Dockerize</td><td><strong>Yes</strong></td><td>No</td></tr>
+        <tr><td>Phase 7</td><td>Deploy to Azure</td><td>Optional</td><td><strong>Yes</strong></td></tr>
+    </tbody>
+</table>
+
+<!-- Footer -->
+<div class="doc-footer">
+    <p>EventSync Technical Blueprint v1.0 &bull; April 2026 &bull; Confidential</p>
+    <p>Generated with AI-assisted development planning</p>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,137 @@
+### EventSync.Api — REST Client sample requests
+### Open in VS Code with the "REST Client" extension (humao.rest-client) installed.
+
+@host = http://localhost:5000
+@v1 = {{host}}/api/v1
+
+### Paste a JWT obtained via Auth0 (e.g., from the Angular app's localStorage
+### or the Auth0 dashboard "Test" tab on the EventSyncAPI). DO NOT commit a real token.
+@token = PASTE_AUTH0_ACCESS_TOKEN_HERE
+
+############################################
+# Diagnostics
+############################################
+
+### Health (anonymous)
+GET {{host}}/health
+
+
+############################################
+# Auth
+############################################
+
+### Get my profile (provisions on first call)
+GET {{v1}}/auth/profile
+Authorization: Bearer {{token}}
+
+### Update my profile
+PUT {{v1}}/auth/profile
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "displayName": "Carlo Dela Cruz",
+  "avatarUrl": "https://example.com/me.png"
+}
+
+
+############################################
+# Event types (lookup)
+############################################
+
+### List event types
+GET {{v1}}/event-types
+Authorization: Bearer {{token}}
+
+
+############################################
+# Events — CRUD
+############################################
+
+### Create an event
+# @name createEvent
+POST {{v1}}/events
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "title": "Quarterly Engineering All-Hands",
+  "description": "Roadmap review and live demos.",
+  "eventTypeId": 2,
+  "location": "Manila Office, 18F Auditorium",
+  "isVirtual": false,
+  "meetingUrl": null,
+  "startDate": "2026-06-15T09:00:00Z",
+  "endDate":   "2026-06-15T11:00:00Z",
+  "maxAttendees": 120
+}
+
+### Capture the new event id
+@eventId = {{createEvent.response.body.id}}
+
+### List my events (default paging)
+GET {{v1}}/events
+Authorization: Bearer {{token}}
+
+### List with paging, search, filter and sort
+GET {{v1}}/events?page=1&pageSize=20&search=all-hands&typeId=2&sortBy=date&sortDir=desc
+Authorization: Bearer {{token}}
+
+### Get a single event by id (full detail + RSVP summary)
+GET {{v1}}/events/{{eventId}}
+Authorization: Bearer {{token}}
+
+### Update the event
+PUT {{v1}}/events/{{eventId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "id": "{{eventId}}",
+  "title": "Quarterly Engineering All-Hands (Updated)",
+  "description": "Roadmap review, demos, and Q&A.",
+  "eventTypeId": 2,
+  "location": "Manila Office, 18F Auditorium",
+  "isVirtual": true,
+  "meetingUrl": "https://teams.microsoft.com/l/meetup-join/example",
+  "startDate": "2026-06-15T09:00:00Z",
+  "endDate":   "2026-06-15T12:00:00Z",
+  "maxAttendees": 200
+}
+
+### Cancel the event
+PATCH {{v1}}/events/{{eventId}}/cancel
+Authorization: Bearer {{token}}
+
+### Soft-delete the event
+DELETE {{v1}}/events/{{eventId}}
+Authorization: Bearer {{token}}
+
+
+############################################
+# Validation / authorization smoke tests
+############################################
+
+### Missing token -> 401
+GET {{v1}}/events
+
+### Invalid payload -> 400 ProblemDetails (empty title, past date, end before start)
+POST {{v1}}/events
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "title": "",
+  "description": null,
+  "eventTypeId": 0,
+  "location": null,
+  "isVirtual": false,
+  "meetingUrl": "not-a-url",
+  "startDate": "2020-01-01T00:00:00Z",
+  "endDate":   "2019-12-31T00:00:00Z",
+  "maxAttendees": 0
+}
+
+### Forbidden — request someone else's event id (replace with a foreign id)
+GET {{v1}}/events/00000000-0000-0000-0000-000000000000
+Authorization: Bearer {{token}}
