@@ -27,7 +27,9 @@ public sealed class GetPublicEventHandler : IRequestHandler<GetPublicEventQuery,
     /// <exception cref="InvalidInviteException">Thrown when the token is unknown, deactivated, expired, exhausted, or the event is gone.</exception>
     public async Task<PublicEventDto> Handle(GetPublicEventQuery request, CancellationToken cancellationToken)
     {
-        var (link, error) = await _inviteValidation.ValidateTokenAsync(request.Token, cancellationToken);
+        var (link, error) = await _inviteValidation.ValidateTokenAsync(
+            request.Token,
+            cancellationToken: cancellationToken);
         if (link is null)
         {
             throw new InvalidInviteException(error ?? "Invite link not found");

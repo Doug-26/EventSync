@@ -75,7 +75,10 @@ public sealed class SubmitRsvpHandler : IRequestHandler<SubmitRsvpCommand, RsvpC
     /// <exception cref="InvalidInviteException">Thrown when the invite token cannot be honoured.</exception>
     public async Task<RsvpConfirmationDto> Handle(SubmitRsvpCommand request, CancellationToken cancellationToken)
     {
-        var (validatedLink, error) = await _inviteValidation.ValidateTokenAsync(request.Token, cancellationToken);
+        var (validatedLink, error) = await _inviteValidation.ValidateTokenAsync(
+            request.Token,
+            forSubmission: true,
+            cancellationToken);
         if (validatedLink is null)
         {
             throw new InvalidInviteException(error ?? "Invite link not found");

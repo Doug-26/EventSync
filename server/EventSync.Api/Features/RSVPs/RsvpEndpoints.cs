@@ -8,7 +8,6 @@ using EventSync.Api.Features.RSVPs.GetPublicEvent;
 using EventSync.Api.Features.RSVPs.GetRsvps;
 using EventSync.Api.Features.RSVPs.GetRsvpSummary;
 using EventSync.Api.Features.RSVPs.SubmitRsvp;
-using FluentValidation;
 using MediatR;
 
 namespace EventSync.Api.Features.RSVPs;
@@ -23,10 +22,17 @@ namespace EventSync.Api.Features.RSVPs;
 public static class RsvpEndpoints
 {
     /// <summary>Registers all RSVP endpoints.</summary>
-    public static IEndpointRouteBuilder MapRsvpEndpoints(this IEndpointRouteBuilder app)
+    /// <param name="app">Endpoint route builder.</param>
+    /// <param name="rsvpRateLimitPolicy">
+    /// Optional named rate-limit policy applied to <c>POST /api/v1/invite/{token}/rsvp</c>.
+    /// When <c>null</c>, no rate limit is enforced (useful for tests).
+    /// </param>
+    public static IEndpointRouteBuilder MapRsvpEndpoints(
+        this IEndpointRouteBuilder app,
+        string? rsvpRateLimitPolicy = null)
     {
         MapOrganizerEndpoints(app);
-        MapPublicEndpoints(app);
+        MapPublicEndpoints(app, rsvpRateLimitPolicy);
         return app;
     }
 
@@ -100,7 +106,7 @@ public static class RsvpEndpoints
     /// <c>AllowAnonymous</c> per the security checklist; the absence of
     /// <c>RequireAuthorization</c> alone is not considered sufficient.
     /// </summary>
-    private static void MapPublicEndpoints(IEndpointRouteBuilder app)
+    private static void MapPublicEndpoints(IEndpointRouteBuilder app, string? rsvpRateLimitPolicy)
     {
         var group = app.MapGroup("/api/v1/invite/{token}")
             .WithTags("Public RSVP")
@@ -126,48 +132,41 @@ public static class RsvpEndpoints
         .Produces<PublicEventDto>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status410Gone);
 
-        group.MapPost("/rsvp", async (
+        var submitRsvp = group.MapPost("/rsvp", async (
             string token,
             SubmitRsvpRequest body,
             HttpContext httpContext,
             IMediator mediator,
             CancellationToken ct) =>
         {
-            try
+            var ipAddress = ResolveCallerIp(httpContext);
+            var command = new SubmitRsvpCommand(
+                token,
+                body.GuestName ?? string.Empty,
+                body.GuestEmail,
+                body.Status,
+                body.Note)
             {
-                var ipAddress = ResolveCallerIp(httpContext);
-                var command = new SubmitRsvpCommand(
-                    token,
-                    body.GuestName ?? string.Empty,
-                    body.GuestEmail,
-                    body.Status,
-                    body.Note)
-                {
-                    IpAddress = ipAddress,
-                };
+                IpAddress = ipAddress,
+            };
 
-                var confirmation = await mediator.Send(command, ct);
-                return Results.Created($"/api/v1/invite/{token}/rsvp/{confirmation.Id}", confirmation);
-            }
-            catch (ValidationException ex)
-            {
-                return Results.ValidationProblem(
-                    ex.Errors.GroupBy(e => e.PropertyName)
-                        .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray()));
-            }
-            catch (InvalidInviteException ex)
-            {
-                return Results.Json(
-                    new { message = ex.Message },
-                    statusCode: StatusCodes.Status410Gone);
-            }
+            // ValidationException + InvalidInviteException are translated to
+            // 400 / 410 by the global ExceptionHandlingMiddleware.
+            var confirmation = await mediator.Send(command, ct);
+            return Results.Created($"/api/v1/invite/{token}/rsvp/{confirmation.Id}", confirmation);
         })
         .WithName("SubmitRsvp")
         .WithSummary("Anonymously submit (or update) an RSVP for an invite token.")
         .AllowAnonymous()
         .Produces<RsvpConfirmationDto>(StatusCodes.Status201Created)
         .ProducesValidationProblem()
-        .Produces(StatusCodes.Status410Gone);
+        .Produces(StatusCodes.Status410Gone)
+        .Produces(StatusCodes.Status429TooManyRequests);
+
+        if (!string.IsNullOrWhiteSpace(rsvpRateLimitPolicy))
+        {
+            submitRsvp.RequireRateLimiting(rsvpRateLimitPolicy);
+        }
     }
 
     /// <summary>

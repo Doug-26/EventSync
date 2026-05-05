@@ -21,6 +21,11 @@ public interface IInviteValidationService
     /// Looks up the invite link by token and reports the first reason it cannot be honoured.
     /// </summary>
     /// <param name="token">URL-safe random token.</param>
+    /// <param name="forSubmission">
+    /// When <c>true</c>, additionally rejects links whose underlying event has been
+    /// cancelled. When <c>false</c> (the default, used by GET) cancelled events are
+    /// returned so the public page can render a "cancelled" notice.
+    /// </param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>
     /// A tuple of <c>(Link, ErrorMessage)</c>. <c>Link</c> is non-null only when validation
@@ -28,6 +33,7 @@ public interface IInviteValidationService
     /// </returns>
     Task<(InviteLink? Link, string? ErrorMessage)> ValidateTokenAsync(
         string token,
+        bool forSubmission = false,
         CancellationToken cancellationToken = default);
 }
 
@@ -45,6 +51,7 @@ public sealed class InviteValidationService : IInviteValidationService
     /// <inheritdoc/>
     public async Task<(InviteLink? Link, string? ErrorMessage)> ValidateTokenAsync(
         string token,
+        bool forSubmission = false,
         CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(token))
@@ -87,6 +94,13 @@ public sealed class InviteValidationService : IInviteValidationService
         if (link.Event.IsDeleted)
         {
             return (null, "Event no longer available");
+        }
+
+        // Cancelled events are still readable (so the public page can show a notice),
+        // but new RSVP submissions are blocked.
+        if (forSubmission && link.Event.IsCancelled)
+        {
+            return (null, "This event has been cancelled and is no longer accepting RSVPs");
         }
 
         return (link, null);
