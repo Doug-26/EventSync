@@ -110,8 +110,8 @@ export class CreateEventComponent {
       location: v.location.trim() || null,
       isVirtual: v.isVirtual,
       meetingUrl: v.isVirtual ? v.meetingUrl.trim() || null : null,
-      startDate: new Date(v.startDate).toISOString(),
-      endDate: v.endDate ? new Date(v.endDate).toISOString() : null,
+      startDate: v.startDate,
+      endDate: v.endDate || null,
       maxAttendees: v.maxAttendees ?? null,
       coverImageUrl: this.coverImageUrl(),
     };

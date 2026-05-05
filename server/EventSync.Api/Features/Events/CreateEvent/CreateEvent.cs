@@ -42,7 +42,7 @@ public sealed class CreateEventValidator : AbstractValidator<CreateEventCommand>
             .When(x => !string.IsNullOrWhiteSpace(x.MeetingUrl));
 
         RuleFor(x => x.StartDate)
-            .GreaterThan(_ => DateTime.UtcNow)
+            .GreaterThan(_ => DateTime.Now)
                 .WithMessage("StartDate must be in the future.");
 
         RuleFor(x => x.EndDate)
@@ -131,10 +131,8 @@ public sealed class CreateEventHandler : IRequestHandler<CreateEventCommand, Eve
             Location = string.IsNullOrWhiteSpace(request.Location) ? null : request.Location.Trim(),
             IsVirtual = request.IsVirtual,
             MeetingUrl = string.IsNullOrWhiteSpace(request.MeetingUrl) ? null : request.MeetingUrl.Trim(),
-            StartDate = DateTime.SpecifyKind(request.StartDate, DateTimeKind.Utc),
-            EndDate = request.EndDate.HasValue
-                ? DateTime.SpecifyKind(request.EndDate.Value, DateTimeKind.Utc)
-                : null,
+            StartDate = request.StartDate,
+            EndDate = request.EndDate,
             MaxAttendees = request.MaxAttendees,
             CoverImageUrl = string.IsNullOrWhiteSpace(request.CoverImageUrl) ? null : request.CoverImageUrl.Trim(),
             CreatedAt = now,

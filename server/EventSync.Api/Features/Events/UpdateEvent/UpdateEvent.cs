@@ -165,10 +165,8 @@ public sealed class UpdateEventHandler : IRequestHandler<UpdateEventCommand, Eve
         entity.Location = string.IsNullOrWhiteSpace(request.Location) ? null : request.Location.Trim();
         entity.IsVirtual = request.IsVirtual;
         entity.MeetingUrl = string.IsNullOrWhiteSpace(request.MeetingUrl) ? null : request.MeetingUrl.Trim();
-        entity.StartDate = DateTime.SpecifyKind(request.StartDate, DateTimeKind.Utc);
-        entity.EndDate = request.EndDate.HasValue
-            ? DateTime.SpecifyKind(request.EndDate.Value, DateTimeKind.Utc)
-            : null;
+        entity.StartDate = request.StartDate;
+        entity.EndDate = request.EndDate;
         entity.MaxAttendees = request.MaxAttendees;
         entity.CoverImageUrl = string.IsNullOrWhiteSpace(request.CoverImageUrl) ? null : request.CoverImageUrl.Trim();
         entity.UpdatedAt = DateTime.UtcNow;
