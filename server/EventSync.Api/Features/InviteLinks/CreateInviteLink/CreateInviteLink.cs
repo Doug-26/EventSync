@@ -31,7 +31,7 @@ public sealed class CreateInviteLinkValidator : AbstractValidator<CreateInviteLi
         RuleFor(x => x.EventId).NotEmpty();
 
         RuleFor(x => x.ExpiresAt)
-            .GreaterThan(_ => DateTime.UtcNow)
+            .GreaterThan(_ => DateTime.Now)
                 .WithMessage("ExpiresAt must be in the future.")
             .When(x => x.ExpiresAt.HasValue);
 
@@ -91,7 +91,7 @@ public sealed class CreateInviteLinkHandler : IRequestHandler<CreateInviteLinkCo
             MaxUses = request.MaxUses,
             UseCount = 0,
             IsActive = true,
-            CreatedAt = DateTime.UtcNow,
+            CreatedAt = DateTime.Now,
         };
 
         _dbContext.InviteLinks.Add(entity);

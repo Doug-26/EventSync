@@ -13,8 +13,9 @@ import { AuthService } from './auth.service';
  * Rules:
  * - Only requests whose URL starts with `environment.apiUrl` are touched. This
  *   prevents leaking tokens to third-party origins.
- * - If the silent token request fails, the error is propagated so the caller
- *   can react (e.g. redirect to login). It is NOT silently swallowed.
+ * - If the silent token request fails due to an expired or missing refresh
+ *   token, the user is logged out automatically so the next login obtains a
+ *   fresh set of tokens.
  *
  * Security:
  * - Tokens are scoped to the EventSync audience by `provideAuth0`.
@@ -38,6 +39,16 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
   return auth.getAccessToken$().pipe(
     catchError((err) => {
       console.error('[Auth] Failed to retrieve access token:', err);
+
+      // When the refresh token is expired, revoked, or missing the Auth0 SDK
+      // throws an error whose message or code indicates the session is
+      // unrecoverable. Log the user out so the next login produces fresh tokens.
+      if (isRefreshTokenError(err)) {
+        console.warn('[Auth] Refresh token expired or missing — logging out.');
+        auth.logout();
+        return throwError(() => err);
+      }
+
       return throwError(() => err);
     }),
     switchMap((token) => {
@@ -49,6 +60,44 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
     }),
   );
 };
+
+/**
+ * Detects refresh-token failures emitted by the Auth0 SDK.
+ *
+ * The SDK surfaces these as plain `Error` objects whose `message` contains
+ * keywords like "Missing Refresh Token" or "Unknown or invalid refresh token".
+ * The `error` field on the object (if present) may also carry the OAuth code
+ * `"login_required"` or `"missing_refresh_token"`.
+ */
+function isRefreshTokenError(err: unknown): boolean {
+  if (typeof err === 'object' && err !== null) {
+    const record = err as Record<string, unknown>;
+
+    // Auth0 SDK error codes.
+    if (
+      record['error'] === 'login_required' ||
+      record['error'] === 'missing_refresh_token' ||
+      record['error'] === 'invalid_grant'
+    ) {
+      return true;
+    }
+
+    // Fallback: match the error message text.
+    const message =
+      typeof record['message'] === 'string'
+        ? record['message'].toLowerCase()
+        : '';
+    if (
+      message.includes('missing refresh token') ||
+      message.includes('invalid refresh token') ||
+      message.includes('unknown or invalid refresh token')
+    ) {
+      return true;
+    }
+  }
+
+  return false;
+}
 
 /** True when the URL targets an explicitly anonymous backend endpoint. */
 function isPublicEndpoint(url: string): boolean {

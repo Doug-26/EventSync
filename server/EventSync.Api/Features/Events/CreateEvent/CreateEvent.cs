@@ -14,6 +14,7 @@ namespace EventSync.Api.Features.Events.CreateEvent;
 /// </summary>
 public sealed record CreateEventCommand(
     string Title,
+    string OrganizerName,
     string? Description,
     int EventTypeId,
     string? Location,
@@ -31,6 +32,7 @@ public sealed class CreateEventValidator : AbstractValidator<CreateEventCommand>
     public CreateEventValidator()
     {
         RuleFor(x => x.Title).NotEmpty().MaximumLength(200);
+        RuleFor(x => x.OrganizerName).NotEmpty().MaximumLength(100);
         RuleFor(x => x.Description).MaximumLength(2000);
         RuleFor(x => x.EventTypeId).GreaterThan(0);
         RuleFor(x => x.Location).MaximumLength(300);
@@ -120,13 +122,14 @@ public sealed class CreateEventHandler : IRequestHandler<CreateEventCommand, Eve
                     nameof(request.EventTypeId),
                     $"EventTypeId {request.EventTypeId} does not exist.")]);
 
-        var now = DateTime.UtcNow;
+        var now = DateTime.Now;
         var entity = new Event
         {
             Id = Guid.NewGuid(),
             OrganizerId = user.Id,
             EventTypeId = request.EventTypeId,
             Title = request.Title.Trim(),
+            OrganizerName = request.OrganizerName.Trim(),
             Description = string.IsNullOrWhiteSpace(request.Description) ? null : request.Description.Trim(),
             Location = string.IsNullOrWhiteSpace(request.Location) ? null : request.Location.Trim(),
             IsVirtual = request.IsVirtual,
@@ -146,6 +149,7 @@ public sealed class CreateEventHandler : IRequestHandler<CreateEventCommand, Eve
         return new EventDto(
             entity.Id,
             entity.Title,
+            entity.OrganizerName,
             entity.Description,
             entity.Location,
             entity.IsVirtual,

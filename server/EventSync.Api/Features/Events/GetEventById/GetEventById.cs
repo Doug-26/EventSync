@@ -80,6 +80,7 @@ public sealed class GetEventByIdHandler : IRequestHandler<GetEventByIdQuery, Eve
         return new EventDetailDto(
             ev.Id,
             ev.Title,
+            ev.OrganizerName,
             ev.Description,
             ev.Location,
             ev.IsVirtual,
@@ -92,7 +93,7 @@ public sealed class GetEventByIdHandler : IRequestHandler<GetEventByIdQuery, Eve
             ev.CreatedAt,
             ev.UpdatedAt,
             new EventTypeDto(ev.EventType.Id, ev.EventType.Name, ev.EventType.Icon),
-            new OrganizerDto(ev.Organizer.DisplayName, ev.Organizer.AvatarUrl),
+            new OrganizerDto(ev.OrganizerName, ev.Organizer.AvatarUrl),
             new RsvpSummaryDto(going, notGoing, maybe, total),
             linkDtos);
     }

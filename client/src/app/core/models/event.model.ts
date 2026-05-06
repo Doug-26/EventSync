@@ -34,6 +34,7 @@ export interface RsvpSummaryDto {
 export interface EventDto {
   readonly id: string;
   readonly title: string;
+  readonly organizerName: string;
   readonly description: string | null;
   readonly location: string | null;
   readonly isVirtual: boolean;
@@ -67,6 +68,7 @@ export interface EventSummaryDto {
 export interface EventDetailDto {
   readonly id: string;
   readonly title: string;
+  readonly organizerName: string;
   readonly description: string | null;
   readonly location: string | null;
   readonly isVirtual: boolean;
@@ -87,6 +89,7 @@ export interface EventDetailDto {
 /** Body for `POST /events`. */
 export interface CreateEventRequest {
   readonly title: string;
+  readonly organizerName: string;
   readonly description: string | null;
   readonly eventTypeId: number;
   readonly location: string | null;

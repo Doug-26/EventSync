@@ -22,6 +22,9 @@ public class Event
     /// <summary>Event title.</summary>
     public string Title { get; set; } = string.Empty;
 
+    /// <summary>Custom organizer name displayed on the event and public RSVP page.</summary>
+    public string OrganizerName { get; set; } = string.Empty;
+
     /// <summary>Optional long-form description.</summary>
     public string? Description { get; set; }
 

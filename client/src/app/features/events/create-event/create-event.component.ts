@@ -63,6 +63,7 @@ export class CreateEventComponent {
   /** Strictly typed form. */
   protected readonly form = this.fb.nonNullable.group({
     title: ['', [Validators.required, Validators.maxLength(200)]],
+    organizerName: ['', [Validators.required, Validators.maxLength(100)]],
     description: ['', [Validators.maxLength(2000)]],
     eventTypeId: this.fb.control<number | null>(null, [Validators.required]),
     location: ['', [Validators.maxLength(300)]],
@@ -105,6 +106,7 @@ export class CreateEventComponent {
     const v = this.form.getRawValue();
     const payload: CreateEventRequest = {
       title: v.title.trim(),
+      organizerName: v.organizerName.trim(),
       description: v.description.trim() || null,
       eventTypeId: Number(v.eventTypeId),
       location: v.location.trim() || null,

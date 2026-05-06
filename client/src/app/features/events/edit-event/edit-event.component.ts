@@ -55,6 +55,7 @@ export class EditEventComponent {
 
   protected readonly form = this.fb.nonNullable.group({
     title: ['', [Validators.required, Validators.maxLength(200)]],
+    organizerName: ['', [Validators.required, Validators.maxLength(100)]],
     description: ['', [Validators.maxLength(2000)]],
     eventTypeId: this.fb.control<number | null>(null, [Validators.required]),
     location: ['', [Validators.maxLength(300)]],
@@ -92,6 +93,7 @@ export class EditEventComponent {
         this.originalTitle.set(ev.title);
         this.form.reset({
           title: ev.title,
+          organizerName: ev.organizerName,
           description: ev.description ?? '',
           eventTypeId: ev.eventType.id,
           location: ev.location ?? '',
@@ -131,6 +133,7 @@ export class EditEventComponent {
     const v = this.form.getRawValue();
     const payload: UpdateEventRequest = {
       title: v.title.trim(),
+      organizerName: v.organizerName.trim(),
       description: v.description.trim() || null,
       eventTypeId: Number(v.eventTypeId),
       location: v.location.trim() || null,

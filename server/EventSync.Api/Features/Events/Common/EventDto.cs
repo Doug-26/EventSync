@@ -32,6 +32,7 @@ public sealed record RsvpSummaryDto(int Going, int NotGoing, int Maybe, int Tota
 public sealed record EventDto(
     Guid Id,
     string Title,
+    string OrganizerName,
     string? Description,
     string? Location,
     bool IsVirtual,
@@ -89,6 +90,7 @@ public sealed record InviteLinkDto(
 public sealed record EventDetailDto(
     Guid Id,
     string Title,
+    string OrganizerName,
     string? Description,
     string? Location,
     bool IsVirtual,

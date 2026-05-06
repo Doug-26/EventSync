@@ -42,7 +42,7 @@ public sealed class CancelEventHandler : IRequestHandler<CancelEventCommand, Uni
         }
 
         entity.IsCancelled = true;
-        entity.UpdatedAt = DateTime.UtcNow;
+        entity.UpdatedAt = DateTime.Now;
 
         await _dbContext.SaveChangesAsync(cancellationToken);
         return Unit.Value;

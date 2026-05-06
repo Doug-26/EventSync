@@ -18,6 +18,7 @@ public sealed class EventConfiguration : IEntityTypeConfiguration<Event>
         builder.HasKey(e => e.Id);
 
         builder.Property(e => e.Title).HasMaxLength(200).IsRequired();
+        builder.Property(e => e.OrganizerName).HasMaxLength(100).IsRequired().HasDefaultValue("");
         builder.Property(e => e.Description).HasMaxLength(2000);
         builder.Property(e => e.Location).HasMaxLength(300);
         builder.Property(e => e.MeetingUrl).HasMaxLength(512);

@@ -81,7 +81,7 @@ public sealed class InviteValidationService : IInviteValidationService
             return (null, "This invite link has been deactivated");
         }
 
-        if (link.ExpiresAt is DateTime expiry && expiry < DateTime.UtcNow)
+        if (link.ExpiresAt is DateTime expiry && expiry < DateTime.Now)
         {
             return (null, "This invite link has expired");
         }

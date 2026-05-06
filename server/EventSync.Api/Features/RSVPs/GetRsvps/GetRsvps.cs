@@ -85,6 +85,6 @@ public sealed class GetRsvpsHandler : IRequestHandler<GetRsvpsQuery, PagedResult
                 r.UpdatedAt))
             .ToListAsync(cancellationToken);
 
-        return new PagedResult<RsvpDto>(items, total, page, pageSize);
+        return new PagedResult<RsvpDto>(items, page, pageSize, total);
     }
 }

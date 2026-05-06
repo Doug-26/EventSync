@@ -37,7 +37,7 @@ public sealed class GetPublicEventHandler : IRequestHandler<GetPublicEventQuery,
 
         var ev = link.Event;
 
-        // Privacy: only DisplayName, never Organizer.Email.
+        // Privacy: only the organizer name set on the event, never email.
         return new PublicEventDto(
             ev.Title,
             ev.Description,
@@ -46,7 +46,7 @@ public sealed class GetPublicEventHandler : IRequestHandler<GetPublicEventQuery,
             ev.IsVirtual,
             ev.StartDate,
             ev.EndDate,
-            ev.Organizer.DisplayName,
+            ev.OrganizerName,
             ev.CoverImageUrl,
             ev.IsCancelled);
     }

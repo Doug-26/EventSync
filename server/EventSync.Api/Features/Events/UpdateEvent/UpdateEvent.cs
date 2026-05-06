@@ -14,6 +14,7 @@ namespace EventSync.Api.Features.Events.UpdateEvent;
 public sealed record UpdateEventCommand(
     Guid Id,
     string Title,
+    string OrganizerName,
     string? Description,
     int EventTypeId,
     string? Location,
@@ -47,6 +48,7 @@ public sealed class UpdateEventValidator : AbstractValidator<UpdateEventCommand>
     {
         RuleFor(x => x.Id).NotEmpty();
         RuleFor(x => x.Title).NotEmpty().MaximumLength(200);
+        RuleFor(x => x.OrganizerName).NotEmpty().MaximumLength(100);
         RuleFor(x => x.Description).MaximumLength(2000);
         RuleFor(x => x.EventTypeId).GreaterThan(0);
         RuleFor(x => x.Location).MaximumLength(300);
@@ -59,7 +61,7 @@ public sealed class UpdateEventValidator : AbstractValidator<UpdateEventCommand>
 
         // Conditional future-start enforcement.
         RuleFor(x => x.StartDate)
-            .GreaterThan(_ => DateTime.UtcNow)
+            .GreaterThan(_ => DateTime.Now)
                 .WithMessage("StartDate must be in the future.")
             .When(_ => EnforceFutureStart);
 
@@ -161,6 +163,7 @@ public sealed class UpdateEventHandler : IRequestHandler<UpdateEventCommand, Eve
         }
 
         entity.Title = request.Title.Trim();
+        entity.OrganizerName = request.OrganizerName.Trim();
         entity.Description = string.IsNullOrWhiteSpace(request.Description) ? null : request.Description.Trim();
         entity.Location = string.IsNullOrWhiteSpace(request.Location) ? null : request.Location.Trim();
         entity.IsVirtual = request.IsVirtual;
@@ -169,7 +172,7 @@ public sealed class UpdateEventHandler : IRequestHandler<UpdateEventCommand, Eve
         entity.EndDate = request.EndDate;
         entity.MaxAttendees = request.MaxAttendees;
         entity.CoverImageUrl = string.IsNullOrWhiteSpace(request.CoverImageUrl) ? null : request.CoverImageUrl.Trim();
-        entity.UpdatedAt = DateTime.UtcNow;
+        entity.UpdatedAt = DateTime.Now;
 
         await _dbContext.SaveChangesAsync(cancellationToken);
 
@@ -182,6 +185,7 @@ public sealed class UpdateEventHandler : IRequestHandler<UpdateEventCommand, Eve
         return new EventDto(
             entity.Id,
             entity.Title,
+            entity.OrganizerName,
             entity.Description,
             entity.Location,
             entity.IsVirtual,

@@ -35,6 +35,31 @@
       }
     </div>
 
+    <!-- Organizer Name -->
+    <div>
+      <label for="organizerName" class="block text-sm font-medium text-slate-800">
+        Organizer name <span aria-hidden="true" class="text-rose-600">*</span>
+      </label>
+      <input
+        id="organizerName"
+        type="text"
+        formControlName="organizerName"
+        maxlength="100"
+        autocomplete="off"
+        required
+        aria-required="true"
+        [attr.aria-invalid]="form.controls.organizerName.touched && form.controls.organizerName.invalid"
+        aria-describedby="organizerName-error"
+        class="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+      />
+      @if (form.controls.organizerName.touched && form.controls.organizerName.invalid) {
+        <p id="organizerName-error" role="alert" class="mt-1 text-xs text-rose-700">
+          @if (form.controls.organizerName.errors?.['required']) { Organizer name is required. }
+          @if (form.controls.organizerName.errors?.['maxlength']) { Organizer name must be at most 100 characters. }
+        </p>
+      }
+    </div>
+
     <!-- Description -->
     <div>
       <label for="description" class="block text-sm font-medium text-slate-800">Description</label>
