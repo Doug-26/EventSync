@@ -8,7 +8,9 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { NavigationEnd, Router, RouterLink } from '@angular/router';
+import { filter, map } from 'rxjs';
 
 import { AuthService } from '../../core/auth/auth.service';
 
@@ -37,6 +39,16 @@ import { AuthService } from '../../core/auth/auth.service';
 })
 export class HeaderComponent {
   private readonly auth = inject(AuthService);
+  private readonly router = inject(Router);
+
+  /** True when the current route is the public RSVP page. */
+  protected readonly isPublicPage = toSignal(
+    this.router.events.pipe(
+      filter((e): e is NavigationEnd => e instanceof NavigationEnd),
+      map((e) => e.urlAfterRedirects.startsWith('/rsvp')),
+    ),
+    { initialValue: this.router.url.startsWith('/rsvp') },
+  );
 
   /** Trigger button — used to restore focus when the menu closes. */
   private readonly menuButton = viewChild<ElementRef<HTMLButtonElement>>('menuButton');
