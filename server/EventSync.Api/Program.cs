@@ -22,6 +22,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
 using Swashbuckle.AspNetCore.Filters;
+using Microsoft.Extensions.FileProviders;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -260,6 +261,21 @@ if (app.Environment.IsDevelopment())
 
 // Serve uploaded images from wwwroot/ (e.g. /uploads/events/abc.jpg).
 app.UseStaticFiles();
+
+// Explicitly map "/uploads" to the physical wwwroot/uploads folder. This
+// ensures the uploads path is served even if the default webroot mapping
+// behaves differently in some hosting environments.
+var uploadsPhysicalPath = Path.Combine(app.Environment.ContentRootPath, "wwwroot", "uploads");
+if (!Directory.Exists(uploadsPhysicalPath))
+{
+    Directory.CreateDirectory(uploadsPhysicalPath);
+}
+
+app.UseStaticFiles(new StaticFileOptions
+{
+    RequestPath = "/uploads",
+    FileProvider = new PhysicalFileProvider(uploadsPhysicalPath)
+});
 
 // Health-check endpoint. Returns a small JSON payload — no PII, safe to be public.
 app.MapGet("/health", () => Results.Ok(new
