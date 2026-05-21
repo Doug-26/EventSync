@@ -65,6 +65,20 @@ export class AuthService {
   }
 
   /**
+   * Clears the Auth0 SDK's local session state (in-memory + localStorage cache)
+   * WITHOUT redirecting through Auth0's `/v2/logout` endpoint.
+   *
+   * Use this when we've detected the session is unrecoverable (expired refresh
+   * token, silent-renew timeout) and want to route the user to our own `/login`
+   * page without a disruptive third-party round-trip.
+   */
+  logoutLocal(): void {
+    this.auth0.logout({ openUrl: false }).subscribe({
+      error: (err) => console.error('[Auth] local logout failed', err),
+    });
+  }
+
+  /**
    * Returns a Promise that resolves with a fresh access token.
    * Throws if the user is not authenticated or the silent renew fails.
    */
