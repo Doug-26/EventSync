@@ -28,6 +28,8 @@ A full-stack event management platform that lets organizers create events, gener
 | 4A | Invite links backend — generate, list, deactivate; RSVP submission + validation | ✅ |
 | 4B | Invite link manager UI, toast notifications, clipboard service | ✅ |
 | 4C | Public RSVP page (anonymous), confirmation page, organizer RSVP list | ✅ |
+| 5A | Backend security hardening — rate limiting, security headers, RFC 7807 error handling, CORS lockdown | ✅ |
+| 5B | Frontend polish — global error handler + HTTP interceptor, skip-nav, accessible toasts, dev-only axe-core scan | ✅ |
 
 ## Project Structure
 
@@ -99,6 +101,11 @@ The API starts on `http://localhost:5000`. Swagger UI is available at `http://lo
 }
 ```
 
+Two additional configuration sections are honored at runtime:
+
+- **`AllowedOrigins`** (string array) — origins permitted by CORS. Defaults to `http://localhost:4200` in Development; **must** be set explicitly in Production (wildcards are not supported).
+- **`SecurityHeaders.Auth0Domain`** — appended to the CSP `connect-src` directive so the SPA can reach your Auth0 tenant. When omitted, the value is derived from `Auth0:Domain`.
+
 ### Frontend Setup
 
 ```bash
@@ -158,6 +165,10 @@ ng serve
 - **Soft-delete with global query filters** — events are never physically removed; EF Core query filters hide them transparently.
 - **Cryptographic invite tokens** — generated via `System.Security.Cryptography.RandomNumberGenerator` (256-bit entropy), not `Guid` or `Random`.
 - **Public endpoints bypass the auth interceptor** — the Angular `authInterceptor` skips `/invite/` paths so guests never trigger a token renewal.
+- **RFC 7807 ProblemDetails everywhere** — a global exception middleware translates `ValidationException`, `NotFoundException`, `ForbiddenAccessException`, and `InvalidInviteException` into standardized `application/problem+json` payloads with a `traceId`. Stack traces are included only in Development.
+- **IP-partitioned rate limiting on the public RSVP endpoint** — fixed-window (5 requests / 10 minutes) using `System.Threading.RateLimiting`; rejections return `429` with a `Retry-After` header. Authenticated endpoints are intentionally unthrottled.
+- **Strict HTTP security headers** — dedicated middleware sets CSP (`script-src 'self'`, no inline JS), `X-Content-Type-Options`, `X-Frame-Options: DENY`, `Referrer-Policy`, `Permissions-Policy`, and HSTS (non-Development only). CORS reads `AllowedOrigins` from configuration — wildcards are never used.
+- **Accessibility-first frontend** — skip-to-main-content link, semantic landmarks, focus-trapped confirm dialog, `aria-live` toast region, and a dev-only `axe-core` scan that re-runs on every navigation so violations surface immediately in the console.
 
 ## License
 
