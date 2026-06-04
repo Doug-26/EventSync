@@ -1,6 +1,21 @@
 # Phase 06a — Vertical Slice 2: Events Backend
 
-Goal: build the entire Events backend — CRUD + cancel + paginated list with search/filter/sort + EventTypes lookup. This is the canonical CQRS slice that every other backend feature follows.
+**Goal:** build the entire Events backend — CRUD + cancel + paginated list with search/filter/sort + EventTypes lookup. This is the canonical CQRS slice that every other backend feature follows.
+
+**Prerequisites:** Phase 05 complete. Confirm with:
+
+```powershell
+cd server/EventSync.Api
+dotnet build
+```
+
+**Expected output:**
+
+```
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+```
 
 ```
 server/EventSync.Api/Features/
@@ -31,7 +46,7 @@ A cancelled event still appears in lists with a strike-through badge. A deleted 
 
 ---
 
-## 1. Shared DTOs — `Common/EventDto.cs`
+## Step 1: Add the shared DTOs — `Common/EventDto.cs`
 
 All Event-related DTOs live in one file because they reference each other and every endpoint in the slice uses some subset:
 
@@ -115,7 +130,7 @@ public sealed record EventDetailDto(
 
 ---
 
-## 2. `CreateEvent.cs` — the canonical write slice
+## Step 2: Add `CreateEvent.cs` — the canonical write slice
 
 ```csharp
 using EventSync.Api.Common.Services;
@@ -269,7 +284,7 @@ public sealed class CreateEventHandler : IRequestHandler<CreateEventCommand, Eve
 
 ---
 
-## 3. `GetEvents.cs` — paged query
+## Step 3: Add `GetEvents.cs` — paged query
 
 ```csharp
 using EventSync.Api.Common.Models;
@@ -375,7 +390,7 @@ public sealed class GetEventsHandler : IRequestHandler<GetEventsQuery, PagedResu
 
 ---
 
-## 4. `GetEventById.cs` — detail query with related data
+## Step 4: Add `GetEventById.cs` — detail query with related data
 
 ```csharp
 using EventSync.Api.Common.Configuration;
@@ -473,7 +488,7 @@ public sealed class GetEventByIdHandler : IRequestHandler<GetEventByIdQuery, Eve
 
 ---
 
-## 5. `UpdateEvent.cs`
+## Step 5: Add `UpdateEvent.cs`
 
 Mirror of `CreateEvent` with three differences. Quoting the parts that differ:
 
@@ -556,7 +571,7 @@ public async Task<EventDto> Handle(UpdateEventCommand request, CancellationToken
 
 ---
 
-## 6. `DeleteEvent.cs` — soft delete
+## Step 6: Add `DeleteEvent.cs` — soft delete
 
 ```csharp
 public sealed record DeleteEventCommand(Guid Id) : IRequest<Unit>;
@@ -602,7 +617,7 @@ public sealed class DeleteEventHandler : IRequestHandler<DeleteEventCommand, Uni
 
 ---
 
-## 7. `CancelEvent.cs`
+## Step 7: Add `CancelEvent.cs`
 
 Almost identical to delete but flips `IsCancelled`:
 
@@ -637,7 +652,7 @@ public sealed class CancelEventHandler : IRequestHandler<CancelEventCommand, Uni
 
 ---
 
-## 8. `EventEndpoints.cs`
+## Step 8: Add `EventEndpoints.cs`
 
 ```csharp
 using EventSync.Api.Common.Models;
@@ -762,7 +777,7 @@ public static class EventEndpoints
 
 ---
 
-## 9. EventTypes lookup
+## Step 9: Add the EventTypes lookup
 
 `server/EventSync.Api/Features/EventTypes/GetEventTypes/GetEventTypes.cs`:
 
@@ -826,7 +841,7 @@ public static class EventTypeEndpoints
 
 ---
 
-## 10. Wire up `Program.cs`
+## Step 10: Wire up `Program.cs`
 
 In your `Program.cs`, uncomment (or add):
 
@@ -843,6 +858,15 @@ Build + run:
 ```powershell
 cd server/EventSync.Api
 dotnet run
+```
+
+**Expected output:**
+
+```
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+Now listening on: http://localhost:5000
 ```
 
 ---

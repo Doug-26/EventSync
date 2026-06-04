@@ -1,10 +1,28 @@
 # Phase 01 — Environment & Scaffolding
 
-Goal: end this phase with two minimal-but-working projects — an ASP.NET Core Web API that returns Swagger and an Angular SPA that boots in the browser. No business logic yet.
+**Goal:** end this phase with two minimal-but-working projects — an ASP.NET Core Web API that returns Swagger and an Angular SPA that boots in the browser. No business logic yet.
+
+**Prerequisites:** all the tools listed in [README.md → Prerequisites](./README.md#prerequisites) installed and on `PATH`. Verify with:
+
+```powershell
+dotnet --version
+node --version
+ng version
+```
+
+**Expected output (versions may be newer):**
+
+```
+10.0.100
+v22.11.0
+Angular CLI: 21.0.0
+```
+
+If any of these errors with "command not found", revisit the prerequisites table before continuing.
 
 ---
 
-## 1. Visual Studio vs VS Code — does it matter?
+## Step 1: Understand Visual Studio vs VS Code
 
 **No — the resulting project is identical.** `.csproj`, `.sln`, and source files are tooling-agnostic. The original repo was built with VS Code + the `dotnet` CLI; rebuilding in Visual Studio works because both tools call the same underlying SDK.
 
@@ -25,7 +43,7 @@ We'll use **CLI commands** as the canonical instructions because they're identic
 
 ---
 
-## 2. Folder layout we're building toward
+## Step 2: Plan the folder layout
 
 ```
 Events App/
@@ -51,9 +69,11 @@ Keep the `server/` and `client/` split — it makes deployment (separate contain
 
 ---
 
-## 3. Create the solution and the Web API project
+## Step 3: Create the solution and the Web API project
 
 Open a PowerShell prompt at the repo root.
+
+**Run this:**
 
 ```powershell
 # Solution file at the repo root
@@ -67,6 +87,14 @@ dotnet new webapi -n EventSync.Api -o server/EventSync.Api `
 dotnet sln "Events App.sln" add server/EventSync.Api/EventSync.Api.csproj
 ```
 
+**Expected output:**
+
+```
+The template "Solution File" was created successfully.
+The template "ASP.NET Core Web API" was created successfully.
+Project `server/EventSync.Api/EventSync.Api.csproj` added to the solution.
+```
+
 > **Visual Studio path:**
 > 1. File → New → Project → "Blank Solution" → name `Events App`, save at repo root.
 > 2. File → Add → New Project → "ASP.NET Core Web API" → name `EventSync.Api`, location `server`.
@@ -75,7 +103,7 @@ dotnet sln "Events App.sln" add server/EventSync.Api/EventSync.Api.csproj
 
 ---
 
-## 4. Configure `EventSync.Api.csproj`
+## Step 4: Configure `EventSync.Api.csproj`
 
 Open `server/EventSync.Api/EventSync.Api.csproj` and replace it with:
 
@@ -122,18 +150,26 @@ Open `server/EventSync.Api/EventSync.Api.csproj` and replace it with:
 | `Swashbuckle.AspNetCore` | Generates and hosts the Swagger UI. |
 | `Swashbuckle.AspNetCore.Filters` | `SecurityRequirementsOperationFilter` — auto-stamps `[Authorize]` endpoints with the Bearer requirement in Swagger. |
 
-Restore packages once you've saved the file:
+Restore packages once you've saved the file.
+
+**Run this:**
 
 ```powershell
 cd server/EventSync.Api
 dotnet restore
 ```
 
+**Expected output (last line):**
+
+```
+Restore complete (X.Xs)
+```
+
 > **Pitfall — Visual Studio:** if you change the `.csproj` from inside VS, Solution Explorer doesn't always trigger a restore. Use `Build → Clean Solution → Build Solution` or run `dotnet restore` from the integrated terminal.
 
 ---
 
-## 5. Configure `launchSettings.json`
+## Step 5: Configure `launchSettings.json`
 
 Replace `server/EventSync.Api/Properties/launchSettings.json` with the single HTTP-only profile we want:
 
@@ -166,7 +202,7 @@ Replace `server/EventSync.Api/Properties/launchSettings.json` with the single HT
 
 ---
 
-## 6. Configure `appsettings.json`
+## Step 6: Configure `appsettings.json`
 
 Replace `server/EventSync.Api/appsettings.json`:
 
@@ -227,7 +263,7 @@ And create `appsettings.Development.json` (it overrides the values above when `A
 
 ---
 
-## 7. Initial `Program.cs`
+## Step 7: Write the minimal `Program.cs`
 
 Replace `server/EventSync.Api/Program.cs` with this minimal version. We'll grow it through every phase that follows.
 
@@ -269,20 +305,35 @@ app.Run();
 
 ---
 
-## 8. Verify the backend boots
+## Step 8: Verify the backend boots
+
+**Run this:**
 
 ```powershell
 cd server/EventSync.Api
 dotnet run
 ```
 
-Expected output ends with `Now listening on: http://localhost:5000`.
+**Expected output (last lines):**
+
+```
+Building...
+info: Microsoft.Hosting.Lifetime[14]
+      Now listening on: http://localhost:5000
+info: Microsoft.Hosting.Lifetime[0]
+      Application started. Press Ctrl+C to shut down.
+```
 
 In another terminal:
 
 ```powershell
 curl http://localhost:5000/health
-# → {"status":"healthy","timestamp":"2026-…"}
+```
+
+**Expected output:**
+
+```
+{"status":"healthy","timestamp":"2026-..."}
 ```
 
 Open `http://localhost:5000/swagger` — you should see the Swagger UI with the `Health` operation.
@@ -291,9 +342,11 @@ Stop the server (Ctrl+C). The backend foundation is good.
 
 ---
 
-## 9. Scaffold the Angular SPA
+## Step 9: Scaffold the Angular SPA
 
 Switch to a VS Code terminal at the repo root.
+
+**Run this:**
 
 ```powershell
 # Angular CLI 21 globally if you haven't already
@@ -309,20 +362,41 @@ ng new client `
     --skip-tests
 ```
 
-When the wizard prompts about analytics, decline. When the install finishes, verify it boots:
+When the wizard prompts about analytics, decline.
+
+**Expected output (last lines):**
+
+```
+CREATE client/angular.json
+CREATE client/package.json
+...
+✔ Packages installed successfully.
+```
+
+Verify it boots:
 
 ```powershell
 cd client
 ng serve --port 4200
 ```
 
+**Expected output:**
+
+```
+Application bundle generation complete. [X.XXX seconds]
+  ➜  Local:   http://localhost:4200/
+  ➜  press h + enter to show help
+```
+
 Open `http://localhost:4200` — you should see the default Angular landing page. Stop with Ctrl+C.
 
 ---
 
-## 10. Install Angular runtime dependencies
+## Step 10: Install Angular runtime dependencies
 
-We need Auth0, Tailwind v4, and a few build-time helpers. From `client/`:
+We need Auth0, Tailwind v4, and a few build-time helpers. From `client/`.
+
+**Run this:**
 
 ```powershell
 # Runtime
@@ -336,6 +410,12 @@ npm install -D tailwindcss@^4.2.4 `
 
 # Dev / test
 npm install -D vitest@^4.0.8 jsdom@^27.1.0 axe-core@^4.11.4
+```
+
+**Expected output (one line per `npm install`):**
+
+```
+added N packages, and audited M packages in Xs
 ```
 
 Open `client/package.json` and confirm `dependencies` and `devDependencies` match the table in the [project README](./README.md#prerequisites).
@@ -353,7 +433,7 @@ Open `client/package.json` and confirm `dependencies` and `devDependencies` matc
 
 ---
 
-## 11. Wire up Tailwind v4
+## Step 11: Wire up Tailwind v4
 
 Tailwind v4 is *significantly* different from v3 — no `tailwind.config.js` by default, no `init` command. Two files are all you need:
 
@@ -399,7 +479,7 @@ body {
 
 ---
 
-## 12. Configure the Angular environments
+## Step 12: Configure the Angular environments
 
 Create `client/src/environments/environment.ts`:
 
@@ -452,7 +532,7 @@ export const environment = {
 
 ---
 
-## 13. Recommended `.gitignore` additions
+## Step 13: Recommended `.gitignore` additions
 
 The Angular CLI and `dotnet new` already ship `.gitignore` files. Append these to whichever you keep at the repo root (create one if needed):
 

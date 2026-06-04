@@ -1,6 +1,24 @@
 # Phase 05 — Vertical Slice 1: Auth Profile
 
-Goal: build the first **end-to-end vertical slice**. Backend `Features/Auth` exposes `GET /api/v1/auth/profile` and `PUT /api/v1/auth/profile`. Frontend consumes them and replaces the placeholder dashboard with a real authenticated screen.
+**Goal:** build the first **end-to-end vertical slice**. Backend `Features/Auth` exposes `GET /api/v1/auth/profile` and `PUT /api/v1/auth/profile`. Frontend consumes them and replaces the placeholder dashboard with a real authenticated screen.
+
+**Prerequisites:** Phases 02, 03, 04 complete. Confirm with:
+
+```powershell
+cd server/EventSync.Api ; dotnet build
+cd ..\..\client ; ng build --configuration development
+```
+
+**Expected output (both):**
+
+```
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+```
+```
+Application bundle generation complete.
+```
 
 This is the simplest possible slice — no validators with complex rules, no database side-effects beyond updating one row, no file uploads. Use it to internalise the slice pattern. Every later feature (Events, RSVPs, Invite Links, Uploads) uses the same anatomy.
 
@@ -29,7 +47,7 @@ client/src/app/
 
 ---
 
-## 1. The DTO — `UserProfileDto.cs`
+## Step 1: Add the DTO — `UserProfileDto.cs`
 
 Create `server/EventSync.Api/Features/Auth/UserProfileDto.cs`:
 
@@ -45,7 +63,7 @@ public record UserProfileDto(Guid Id, string Email, string DisplayName, string? 
 
 ---
 
-## 2. The query — `GetProfile.cs`
+## Step 2: Add the query — `GetProfile.cs`
 
 Create `server/EventSync.Api/Features/Auth/GetProfile/GetProfile.cs`:
 
@@ -87,7 +105,7 @@ public sealed class GetProfileHandler : IRequestHandler<GetProfileQuery, UserPro
 
 ---
 
-## 3. The command — `UpdateProfile.cs`
+## Step 3: Add the command — `UpdateProfile.cs`
 
 Create `server/EventSync.Api/Features/Auth/UpdateProfile/UpdateProfile.cs`:
 
@@ -164,7 +182,7 @@ public sealed class UpdateProfileHandler : IRequestHandler<UpdateProfileCommand,
 
 ---
 
-## 4. The endpoint mapper — `AuthEndpoints.cs`
+## Step 4: Add the endpoint mapper — `AuthEndpoints.cs`
 
 Create `server/EventSync.Api/Features/Auth/AuthEndpoints.cs`:
 
@@ -255,7 +273,26 @@ Hit `https://localhost:5000/swagger`. You should see the **Auth** tag with `GET 
 
 ---
 
-## 5. Test the backend in Swagger
+## Step 5: Test the backend in Swagger
+
+**Run this:**
+
+```powershell
+cd server/EventSync.Api
+dotnet build
+dotnet run
+```
+
+**Expected output:**
+
+```
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+Now listening on: http://localhost:5000
+```
+
+Open `http://localhost:5000/swagger`.
 
 To test, you need a real bearer token. Easiest path:
 
@@ -269,7 +306,7 @@ To test, you need a real bearer token. Easiest path:
 
 ---
 
-## 6. The frontend mirror — `user-profile.model.ts`
+## Step 6: Add the frontend model — `user-profile.model.ts`
 
 Create `client/src/app/core/models/user-profile.model.ts`:
 
@@ -289,7 +326,7 @@ export interface UserProfileDto {
 
 ---
 
-## 7. The typed client — `auth-api.service.ts`
+## Step 7: Add the typed client — `auth-api.service.ts`
 
 Create `client/src/app/core/api/auth-api.service.ts`:
 
@@ -331,7 +368,7 @@ export class AuthApiService {
 
 ---
 
-## 8. Polish the login page
+## Step 8: Polish the login page
 
 Replace the stub from phase 04 with `client/src/app/features/auth/login/login.component.ts`:
 
@@ -415,7 +452,7 @@ export class LoginComponent {
 
 ---
 
-## 9. Polish the callback page
+## Step 9: Polish the callback page
 
 Replace `client/src/app/features/auth/auth-callback/auth-callback.component.ts`:
 
@@ -465,7 +502,7 @@ export class AuthCallbackComponent {
 
 ---
 
-## 10. The real dashboard
+## Step 10: Build the real dashboard
 
 > The full dashboard in the repo also shows event stats and the next five events. Those depend on the **Events** slice from phase 06. For now, build a profile-only dashboard; phase 06 extends it.
 
@@ -539,7 +576,7 @@ We don't use `OnInit` because the constructor runs in the injection context and 
 
 ---
 
-## 11. The full sign-in flow (sequence)
+## Step 11: Walk through the full sign-in flow (sequence)
 
 ```
 Browser           Angular (SPA)          Auth0                  EventSync API

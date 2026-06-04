@@ -1,6 +1,21 @@
 # Phase 03 — Data Layer (EF Core)
 
-Goal: replace the placeholder `User` + `AppDbContext` from phase 02 with the full five-entity model, write each Fluent API configuration, seed the `EventTypes` lookup table, and run the first migration. By the end, your SQL Server LocalDB contains every table the API needs.
+**Goal:** replace the placeholder `User` + `AppDbContext` from phase 02 with the full five-entity model, write each Fluent API configuration, seed the `EventTypes` lookup table, and run the first migration. By the end, your SQL Server LocalDB contains every table the API needs.
+
+**Prerequisites:** Phase 02 complete. Confirm with:
+
+```powershell
+cd server/EventSync.Api
+dotnet build
+```
+
+**Expected output:**
+
+```
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+```
 
 Files we'll create / replace:
 
@@ -25,7 +40,7 @@ server/EventSync.Api/Data/
 
 ---
 
-## 1. The domain model at a glance
+## Step 1: Understand the domain model at a glance
 
 ```
    ┌────────┐ 1..* organizes ┌────────┐ *..1  ┌───────────┐
@@ -59,7 +74,7 @@ Key design choices we're enforcing through configurations:
 
 ---
 
-## 2. Entities
+## Step 2: Add the five entity classes
 
 ### 2a. `User.cs`
 
@@ -231,7 +246,7 @@ public class Rsvp
 
 ---
 
-## 3. Configurations (Fluent API)
+## Step 3: Add the Fluent API configurations
 
 These classes implement `IEntityTypeConfiguration<T>` and are auto-applied by `modelBuilder.ApplyConfigurationsFromAssembly(...)` in the DbContext.
 
@@ -441,7 +456,7 @@ public sealed class RsvpConfiguration : IEntityTypeConfiguration<Rsvp>
 
 ---
 
-## 4. `AppDbContext.cs`
+## Step 4: Write the full `AppDbContext`
 
 Replace `Data/AppDbContext.cs`:
 
@@ -493,7 +508,7 @@ public class AppDbContext : DbContext
 
 ---
 
-## 5. Make sure DI is wired up
+## Step 5: Verify DI is wired up
 
 In `Program.cs` (already done in phase 02 §10a, but verify):
 
@@ -507,9 +522,11 @@ Also: the `CurrentUserService.GetOrCreateUserAsync` method (phase 02 §8) used `
 
 ---
 
-## 6. Generate and apply the first migration
+## Step 6: Generate and apply the first migration
 
-From `server/EventSync.Api/`:
+From `server/EventSync.Api/`.
+
+**Run this:**
 
 ```powershell
 # Build first so the EF tools find the model assembly.
@@ -520,6 +537,27 @@ dotnet ef migrations add InitialCreate -o Migrations
 
 # Apply to LocalDB.
 dotnet ef database update
+```
+
+**Expected output (each command):**
+
+```
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+```
+
+```
+Build started...
+Build succeeded.
+Done. To undo this action, use 'ef migrations remove'
+```
+
+```
+Build started...
+Build succeeded.
+Applying migration '<timestamp>_InitialCreate'.
+Done.
 ```
 
 > **Visual Studio note:** the equivalent in Package Manager Console (Tools → NuGet Package Manager → Package Manager Console) is:
@@ -549,7 +587,7 @@ What `dotnet ef database update` does:
 
 ---
 
-## 7. Verify the database
+## Step 7: Verify the database
 
 Use SQL Server Management Studio (SSMS), Azure Data Studio, or the VS Code "SQL Server (mssql)" extension to connect to `(localdb)\MSSQLLocalDB` and confirm:
 
@@ -576,9 +614,25 @@ WHERE i.object_id = OBJECT_ID('Rsvps') AND i.has_filter = 1;
 
 ---
 
-## 8. Smoke-test from the running API
+## Step 8: Smoke-test from the running API
 
-Start the API (`dotnet run` from `server/EventSync.Api/`) and add a temporary endpoint that exercises the DbContext:
+Start the API.
+
+**Run this:**
+
+```powershell
+cd server/EventSync.Api
+dotnet run
+```
+
+**Expected output (last lines):**
+
+```
+Now listening on: http://localhost:5000
+Application started. Press Ctrl+C to shut down.
+```
+
+Add a temporary endpoint that exercises the DbContext:
 
 ```csharp
 // Add temporarily inside Program.cs, just before app.Run():
@@ -587,7 +641,19 @@ app.MapGet("/debug/event-types", async (AppDbContext db) =>
   .AllowAnonymous();
 ```
 
-Hit `http://localhost:5000/debug/event-types` — you should get the 9 seeded rows. The middleware pipeline + DI + DbContext + query filter + everything is alive.
+Hit `http://localhost:5000/debug/event-types`.
+
+**Expected output (formatted JSON, 9 rows):**
+
+```json
+[
+  {"id":1,"name":"Seminar","icon":"🎓"},
+  {"id":2,"name":"Meeting","icon":"📅"},
+  ...
+]
+```
+
+The middleware pipeline + DI + DbContext + query filter + everything is alive.
 
 **Remove the temporary endpoint after testing.**
 

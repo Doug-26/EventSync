@@ -1,6 +1,21 @@
 # Phase 02 — Backend Foundations
 
-Goal: build every cross-cutting piece the API needs *before* we add a single feature — custom exceptions, middleware, options, the MediatR validation pipeline, the JWT bearer setup, CORS, rate limiting, and the full `Program.cs`. By the end of this phase, the API will be **ready to host vertical slices** but won't have any business endpoints yet (just `/health`).
+**Goal:** build every cross-cutting piece the API needs *before* we add a single feature — custom exceptions, middleware, options, the MediatR validation pipeline, the JWT bearer setup, CORS, rate limiting, and the full `Program.cs`. By the end of this phase, the API will be **ready to host vertical slices** but won't have any business endpoints yet (just `/health`).
+
+**Prerequisites:** Phase 01 complete. Confirm with:
+
+```powershell
+cd server/EventSync.Api
+dotnet build
+```
+
+**Expected output:**
+
+```
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+```
 
 Folder we're filling in:
 
@@ -27,7 +42,7 @@ server/EventSync.Api/
 
 ---
 
-## 1. Custom exceptions
+## Step 1: Add custom exceptions
 
 Why bother with custom exceptions instead of returning `Results.NotFound()` directly?
 
@@ -89,7 +104,7 @@ public sealed class InvalidInviteException : Exception
 
 ---
 
-## 2. `PagedResult<T>`
+## Step 2: Add `PagedResult<T>`
 
 Two endpoints (list events, list RSVPs) need a paged response shape. One small generic record covers both.
 
@@ -118,7 +133,7 @@ public sealed record PagedResult<T>(
 
 ---
 
-## 3. `FrontendOptions` (Options pattern)
+## Step 3: Add `FrontendOptions` (Options pattern)
 
 ASP.NET Core's Options pattern lets us bind a configuration section into a strongly-typed POCO once and inject `IOptions<T>` wherever needed.
 
@@ -143,7 +158,7 @@ public sealed class FrontendOptions
 
 ---
 
-## 4. The MediatR validation pipeline
+## Step 4: Add the MediatR validation pipeline
 
 This is what makes "send a command → run validation → run handler" automatic. Without it, every handler would need to manually invoke its validator.
 
@@ -207,7 +222,7 @@ public sealed class ValidationBehavior<TRequest, TResponse> : IPipelineBehavior<
 
 ---
 
-## 5. `ExceptionHandlingMiddleware` — RFC 7807 ProblemDetails
+## Step 5: Add `ExceptionHandlingMiddleware` — RFC 7807 ProblemDetails
 
 This is the single source of truth for "an exception became an HTTP response". Every error in the system flows through here.
 
@@ -386,7 +401,7 @@ public static class ExceptionHandlingMiddlewareExtensions
 
 ---
 
-## 6. `SecurityHeadersMiddleware`
+## Step 6: Add `SecurityHeadersMiddleware`
 
 Browsers obey HTTP response headers to enforce defenses (CSP, clickjacking, MIME sniffing, HSTS). We send a strict default set on every response.
 
@@ -509,7 +524,7 @@ public static class SecurityHeadersMiddlewareExtensions
 
 ---
 
-## 7. `TokenGenerator`
+## Step 7: Add `TokenGenerator`
 
 Used in phase 08 to mint invite-link tokens. Must be **cryptographically random**.
 
@@ -556,7 +571,7 @@ public sealed class TokenGenerator : ITokenGenerator
 
 ---
 
-## 8. `CurrentUserService` — bridging Auth0 claims to our `Users` table
+## Step 8: Add `CurrentUserService` — bridging Auth0 claims to our `Users` table
 
 Auth0 owns *who you are*; our database owns *what you've created*. We need a small service to map between them: read the validated JWT claims, find or create a `User` row.
 
@@ -656,7 +671,9 @@ public sealed class CurrentUserService : ICurrentUserService
 
 ---
 
-## 9. The rest of the entity references
+## Step 9: Stub the entity references
+
+> Phase 03 builds the real EF entities. For this phase to compile, add minimal stubs so the `CurrentUserService` type-checks.
 
 `CurrentUserService` references `Data/Entities/User.cs` and `Data/AppDbContext.cs`. These come in phase 03. For now, create empty placeholder files so the project still compiles:
 
@@ -694,7 +711,7 @@ Phase 03 will replace both files with the full versions.
 
 ---
 
-## 10. The full `Program.cs`
+## Step 10: Rewrite the full `Program.cs`
 
 Replace `server/EventSync.Api/Program.cs` with the canonical version. It's long, so we'll walk through it in five logical sections.
 
@@ -1053,13 +1070,34 @@ public partial class Program { }
 
 You've passed this phase when:
 
-1. The project compiles: `dotnet build` (from `server/EventSync.Api/`) succeeds with zero errors and no warnings about missing usings.
+1. The project compiles:
+   ```powershell
+   cd server/EventSync.Api
+   dotnet build
+   ```
+   **Expected output:**
+   ```
+   Build succeeded.
+       0 Warning(s)
+       0 Error(s)
+   ```
+
 2. `dotnet run` starts without crashing (the slice `Map…Endpoints()` calls are commented out, so no missing-type errors).
-3. `http://localhost:5000/health` returns `200`. The response headers include:
+   **Expected output (last lines):**
+   ```
+   info: Microsoft.Hosting.Lifetime[14]
+         Now listening on: http://localhost:5000
+   info: Microsoft.Hosting.Lifetime[0]
+         Application started. Press Ctrl+C to shut down.
+   ```
+
+3. `curl -i http://localhost:5000/health` returns `200`. Check the headers include:
    - `X-Content-Type-Options: nosniff`
    - `X-Frame-Options: DENY`
    - `Content-Security-Policy: default-src 'self'; …`
+
 4. `http://localhost:5000/swagger` shows the `Health` endpoint and an **Authorize** button in the top-right (Bearer scheme).
+
 5. If you trigger a deliberate exception (e.g., add `app.MapGet("/boom", () => { throw new EventSync.Api.Common.Exceptions.NotFoundException("Event"); });` temporarily), hitting `/boom` returns a `404` with body:
    ```json
    {

@@ -2,7 +2,23 @@
 
 A step-by-step guide to reconstructing **EventSync** end-to-end so that every architectural decision, file, and line of code makes sense. Designed for someone who wants to internalise the project deeply enough to defend it in an interview.
 
-> **How to use this guide:** Follow the phases in order. Each phase has a **Checkpoint** at the end — don't move on until your local app matches the checkpoint description. Code is quoted directly from the working repo so you can compare with the original when stuck.
+> **How to use this guide:** Follow the phases in order. Each phase is broken into **small numbered steps**. After every step you'll run a command (usually `dotnet build` or `ng build`) and check the expected output before moving on. Each phase also ends with a **Checkpoint** — don't move on until your local app matches the checkpoint description. Code is quoted directly from the working repo so you can compare with the original when stuck.
+
+### The build-from-scratch style
+
+Every phase follows the same template:
+
+1. **Goal** (one sentence) + **Prerequisites** (which prior phases must be done).
+2. **Numbered steps**. Each step:
+   - Names one file (or one section of a long file) to add or edit.
+   - Quotes the code in full.
+   - Explains the non-obvious lines.
+   - Tells you exactly which command to run and what output to expect.
+   - Calls out **Pitfalls** and **Why this matters** inline.
+3. **Checkpoint** — end-of-phase verification (boot the app, hit endpoints, query the DB, click through the UI).
+4. **Next phase** link.
+
+If a build fails mid-phase, **stop and fix it before moving to the next step**. The whole point of the per-step builds is that the error is now localised to the change you just made.
 
 ---
 
@@ -65,7 +81,8 @@ Install these once before phase 01:
 | [03](./03-foundations-data-layer.md) | EF Core data layer | All 5 entities, Fluent API configs, `AppDbContext`, first migration |
 | [04](./04-foundations-frontend.md) | Angular app shell | `app.config`, routing, auth guard / interceptor, error interceptor, toast, layout, Tailwind, Auth0 tenant setup |
 | [05](./05-vertical-slice-auth.md) | **Slice:** Auth | `Features/Auth` + login/callback/dashboard; first end-to-end PKCE flow |
-| [06](./06-vertical-slice-events.md) | **Slice:** Events | CRUD + EventTypes lookup, list/create/edit/detail components, shared widgets |
+| [06a](./06a-vertical-slice-events-backend.md) | **Slice:** Events — Backend | CRUD + EventTypes lookup: DTOs, validators, handlers, endpoints |
+| [06b](./06b-vertical-slice-events-frontend.md) | **Slice:** Events — Frontend | `EventService`, list/create/edit/detail components, validators, shared widgets |
 | [07](./07-vertical-slice-uploads.md) | **Slice:** Image upload | Magic-byte validation, wire into event forms |
 | [08](./08-vertical-slice-invite-links.md) | **Slice:** Invite links | Crypto-random tokens, invite manager UI, clipboard service |
 | [09](./09-vertical-slice-rsvps.md) | **Slice:** RSVPs | Public RSVP flow, organizer view, rate limiting, status badge |
@@ -78,8 +95,10 @@ Each phase quotes code from the real repo so you can compare with the originals 
 
 ## Conventions used throughout
 
-- **Code blocks** are quoted from the actual repo. Long files (e.g. `Program.cs`) are split into logical sections, each with its own explanation block.
-- **Line-by-line explanations** reference line numbers inside the immediately preceding code block.
+- **One step = one file (or one section of a long file).** Don't combine steps; the per-step build check is how you localise errors.
+- **Code blocks** are quoted from the actual repo, lightly cleaned for clarity. Long files (e.g. `Program.cs`, `AppDbContext`) are built up incrementally across several steps with a `dotnet build` between each.
+- **Run blocks** show the exact command in a fenced ```powershell or ```bash block. **Expected output** follows in its own fenced block so you know what "success" looks like.
+- **"Why each line"** bullets reference line numbers inside the immediately preceding code block. Skipped for trivial one-liners and pure config.
 - **"Why this matters"** callouts explain non-obvious design decisions.
 - **"Pitfall"** callouts highlight mistakes that are easy to make.
 - **"Visual Studio note"** callouts call out where the VS GUI does something different from the CLI.

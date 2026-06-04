@@ -1,6 +1,19 @@
 # Phase 04 — Frontend Foundations (Angular App Shell)
 
-Goal: build every cross-cutting frontend piece — DI setup, routing, Auth0 wrapper, auth guard, HTTP interceptors, error handling, toast service, layout (header/footer), and an Auth0 tenant walkthrough. By the end, the SPA boots, displays the header/footer, redirects unauthenticated users to a login page, and is ready for vertical slices.
+**Goal:** build every cross-cutting frontend piece — DI setup, routing, Auth0 wrapper, auth guard, HTTP interceptors, error handling, toast service, layout (header/footer), and an Auth0 tenant walkthrough. By the end, the SPA boots, displays the header/footer, redirects unauthenticated users to a login page, and is ready for vertical slices.
+
+**Prerequisites:** Phase 01 complete (the SPA was scaffolded). Confirm with:
+
+```powershell
+cd client
+ng build --configuration development
+```
+
+**Expected output:**
+
+```
+Application bundle generation complete. [X.XXX seconds]
+```
 
 Files we'll create / replace:
 
@@ -29,7 +42,7 @@ client/src/app/
 
 ---
 
-## 1. Set up your Auth0 tenant (do this first)
+## Step 1: Set up your Auth0 tenant (do this first)
 
 Auth0 is the identity provider — sign-up, social login, MFA, password reset all live there. Three things to create:
 
@@ -90,7 +103,7 @@ auth0: {
 
 ---
 
-## 2. `app.config.ts` — Application DI
+## Step 2: Add `app.config.ts` — application DI
 
 Replace `client/src/app/app.config.ts`:
 
@@ -133,7 +146,7 @@ export const appConfig: ApplicationConfig = {
 
 ---
 
-## 3. `app.routes.ts` — Route table
+## Step 3: Add `app.routes.ts` — route table
 
 Replace `client/src/app/app.routes.ts`:
 
@@ -194,7 +207,7 @@ export const routes: Routes = [
 
 ---
 
-## 4. The root component (`app.ts` + `app.html` + `app.css`)
+## Step 4: Add the root component (`app.ts` + `app.html` + `app.css`)
 
 `client/src/app/app.ts`:
 
@@ -259,7 +272,7 @@ export class App {}
 
 ---
 
-## 5. The auth wrapper (`AuthService`)
+## Step 5: Add the auth wrapper (`AuthService`)
 
 Create `client/src/app/core/auth/auth.service.ts`:
 
@@ -328,7 +341,7 @@ export class AuthService {
 
 ---
 
-## 6. The auth guard (`auth.guard.ts`)
+## Step 6: Add the auth guard (`auth.guard.ts`)
 
 Create `client/src/app/core/auth/auth.guard.ts`:
 
@@ -366,7 +379,7 @@ export const authGuard: CanActivateFn = (_route, state): Observable<boolean | Ur
 
 ---
 
-## 7. The auth interceptor (`auth.interceptor.ts`)
+## Step 7: Add the auth interceptor (`auth.interceptor.ts`)
 
 This is the most subtle piece of the entire frontend. It attaches the bearer token, but it *also* handles every silent-renewal failure path so a dead session smoothly redirects to login.
 
@@ -484,7 +497,7 @@ function withBearer<T>(req: HttpRequest<T>, token: string): HttpRequest<T> {
 
 ---
 
-## 8. The error interceptor (`error.interceptor.ts`)
+## Step 8: Add the error interceptor (`error.interceptor.ts`)
 
 Create `client/src/app/core/error/error.interceptor.ts`:
 
@@ -558,7 +571,7 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
 
 ---
 
-## 9. The global error handler (`global-error-handler.ts`)
+## Step 9: Add the global error handler (`global-error-handler.ts`)
 
 Create `client/src/app/core/error/global-error-handler.ts`:
 
@@ -613,7 +626,7 @@ export class GlobalErrorHandler implements ErrorHandler {
 
 ---
 
-## 10. The toast service + container
+## Step 10: Add the toast service + container
 
 Create `client/src/app/shared/services/toast.service.ts`:
 
@@ -754,7 +767,7 @@ export class ToastContainerComponent {
 
 ---
 
-## 11. Header + Footer
+## Step 11: Add header + footer
 
 `client/src/app/layout/footer/footer.ts`:
 
@@ -875,7 +888,7 @@ The full template (`header.html`) is in the repo — copy it verbatim. The key s
 
 ---
 
-## 12. Final verification
+## Step 12: Final verification
 
 You'll need login/dashboard placeholders (we'll flesh them out in phase 05). For now, create minimal stubs so the routes resolve:
 
@@ -938,11 +951,18 @@ export class DashboardComponent {
 
 For now, comment out the `/events` and `/rsvp` routes in `app.routes.ts` — we'll uncomment them in phases 06 and 09.
 
-Now build + run:
+**Run this:**
 
 ```powershell
 cd client
 ng serve --port 4200
+```
+
+**Expected output:**
+
+```
+Application bundle generation complete. [X.XXX seconds]
+  ➜  Local:   http://localhost:4200/
 ```
 
 ---

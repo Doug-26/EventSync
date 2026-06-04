@@ -1,6 +1,18 @@
 # Phase 06b — Vertical Slice 2: Events Frontend
 
-Goal: build everything the user touches for events — list with search/filter/sort/paging, create form, edit form, detail page, and a polished dashboard with stats. By the end the SPA is feature-complete for the core event lifecycle.
+**Goal:** build everything the user touches for events — list with search/filter/sort/paging, create form, edit form, detail page, and a polished dashboard with stats. By the end the SPA is feature-complete for the core event lifecycle.
+
+**Prerequisites:** Phase 06a complete (backend endpoints reachable). Confirm with:
+
+```powershell
+curl http://localhost:5000/api/v1/event-types
+```
+
+**Expected output (requires the API running):**
+
+```json
+[{"id":1,"name":"Seminar","icon":"🎓"}, ...]
+```
 
 ```
 client/src/app/
@@ -21,7 +33,7 @@ client/src/app/
 
 ---
 
-## 1. Models — mirror the backend DTOs
+## Step 1: Add the TypeScript models that mirror the backend DTOs
 
 `client/src/app/core/models/paged-result.model.ts`:
 
@@ -153,7 +165,7 @@ export interface EventListParams {
 
 ---
 
-## 2. The typed client — `event.service.ts`
+## Step 2: Add the typed client — `event.service.ts`
 
 ```typescript
 import { HttpClient, HttpParams } from '@angular/common/http';
@@ -279,7 +291,7 @@ export class EventService {
 
 ---
 
-## 3. Custom validators — `custom-validators.ts`
+## Step 3: Add custom validators — `custom-validators.ts`
 
 `client/src/app/shared/validators/custom-validators.ts`:
 
@@ -333,7 +345,7 @@ export function dateAfter(siblingControlName: string): ValidatorFn {
 
 ---
 
-## 4. Routes — `events.routes.ts`
+## Step 4: Add the routes — `events.routes.ts`
 
 ```typescript
 import { Routes } from '@angular/router';
@@ -374,7 +386,7 @@ Routes are matched in order. **`:id/edit` must come before `:id`** — otherwise
 
 ---
 
-## 5. The list — `event-list.component.ts`
+## Step 5: Build the list — `event-list.component.ts`
 
 The most complex component in the slice. Debounced search, filter, sort, paging, all driven by signals.
 
@@ -539,7 +551,7 @@ Two requests on success: the DELETE, then a re-fetch with the current params. Re
 
 ---
 
-## 6. Create form — `create-event.component.ts`
+## Step 6: Build the create form — `create-event.component.ts`
 
 ```typescript
 import {
@@ -687,7 +699,7 @@ The cover image flow uploads immediately on selection (not at form-submit time).
 
 ---
 
-## 7. Edit form — `edit-event.component.ts`
+## Step 7: Build the edit form — `edit-event.component.ts`
 
 Same shape as Create with three differences:
 
@@ -721,7 +733,7 @@ Cover image URLs from upload are server-relative (`/uploads/foo.jpg`). The brows
 
 ---
 
-## 8. Detail page — `event-detail.component.ts`
+## Step 8: Build the detail page — `event-detail.component.ts`
 
 Read-only with three destructive actions (Edit, Cancel, Delete) and a `ConfirmDialog` for the last two.
 
@@ -848,7 +860,7 @@ export class EventDetailComponent {
 
 ---
 
-## 9. Dashboard upgrade
+## Step 9: Upgrade the dashboard
 
 Replace the phase-05 dashboard with the version that surfaces event stats and the next 5 upcoming events:
 
@@ -925,7 +937,7 @@ For MVP scale (a single user with maybe 20–50 events at most). All four stats 
 
 ---
 
-## 10. Stub the shared components and event-card
+## Step 10: Stub the shared components and event-card
 
 Three quick stubs you'll polish in phase 10:
 
