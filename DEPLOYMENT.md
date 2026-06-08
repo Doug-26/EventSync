@@ -420,6 +420,13 @@ server {
         proxy_pass http://api_upstream;
     }
 
+    # Uploaded files (event images) are served by the API from wwwroot/uploads.
+    # Without this block, /uploads/* would fall through to the SPA container → 404.
+    location /uploads/ {
+        proxy_pass http://api_upstream;
+        client_max_body_size 10m;   # match the API's upload limit
+    }
+
     location /health {
         proxy_pass http://api_upstream;
     }
@@ -459,6 +466,10 @@ services:
       dockerfile: Dockerfile
     environment:
       ASPNETCORE_ENVIRONMENT: "Production"
+      # appsettings.Production.json has AllowedHosts as a placeholder; without
+      # an override here, the Host-filtering middleware returns HTTP 400 for
+      # every request (including /health).
+      AllowedHosts: "*"
       ConnectionStrings__DefaultConnection: "Server=db,1433;Database=EventSync;User Id=sa;Password=${SA_PASSWORD};TrustServerCertificate=True;Encrypt=False"
       Auth0__Domain: "${AUTH0_DOMAIN}"
       Auth0__Audience: "${AUTH0_AUDIENCE}"
@@ -467,6 +478,10 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    volumes:
+      # Persist uploaded event images across container rebuilds.
+      # Without this, every `docker compose up --build api` wipes them.
+      - uploads:/app/wwwroot/uploads
     expose:
       - "8080"
 
@@ -489,6 +504,7 @@ services:
 
 volumes:
   sqldata:
+  uploads:
 ```
 
 #### File 8 — `.env.example` (at repo root)
@@ -528,7 +544,11 @@ Open `.gitignore` and add these lines if they aren't already there:
 **/.angular/
 ```
 
-### 3.4 Tiny code change — auto-migrate the DB on startup
+### 3.4 Tiny code changes
+
+Two small edits before the first container run.
+
+#### 3.4.1 Auto-migrate the DB on startup
 
 So we don't have to run `dotnet ef database update` manually in containers and cloud, add a small block to `Program.cs`.
 
@@ -546,6 +566,34 @@ if (!app.Environment.IsDevelopment())
 ```
 
 > ⚠ **Why `!IsDevelopment` and not `IsProduction`?** Docker, Azure, and AWS all run as `Production`. Local LocalDB runs as `Development`. Using `!IsDevelopment` covers all three deployment targets in one line.
+
+#### 3.4.2 Persist the Auth0 session across page refreshes (SPA)
+
+The dev environment file already enables `localStorage` token caching + refresh tokens, but the production environment file does not. Without these two settings, every browser refresh on the Dockerized site forces a re-login.
+
+Open `client/src/environments/environment.prod.ts` and update the `auth0` block so it matches the dev file:
+
+```ts
+export const environment = {
+  production: true,
+  apiUrl: '/api/v1',
+  auth0: {
+    domain: 'YOUR-TENANT.auth0.com',
+    clientId: 'YOUR-CLIENT-ID',
+    // Persist tokens in localStorage so the session survives page refresh.
+    cacheLocation: 'localstorage' as const,
+    // Use refresh tokens (with rotation) for silent renewal — modern browsers
+    // block 3rd-party cookies, so iframe-based silent auth often fails.
+    useRefreshTokens: true,
+    authorizationParams: {
+      redirect_uri: window.location.origin + '/auth/callback',
+      audience: 'https://eventsync-api',
+    },
+  },
+} as const;
+```
+
+> ⚠ **Security trade-off.** `localStorage` is readable by any JS on the same origin, so an XSS bug could leak the token. Your app's strict CSP, Angular's HTML sanitization, and no third-party scripts mitigate this — it's the standard Auth0 SPA recommendation when there's no same-origin BFF.
 
 ### 3.5 Run it
 
@@ -583,6 +631,10 @@ docker compose restart api      # restart just the api after a code change
 | `port 1433 is already in use` | LocalDB or another SQL instance running | Either stop it, or remove the `1433:1433` line in `docker-compose.yml` (the API still works because it talks to the DB on the internal network). |
 | `db` container restarts in a loop | SA password too weak | Pick a stronger password in `.env`, then `docker compose down -v` (wipes the volume so the new password takes effect). |
 | `api` says "no migrations found" | Forgot to copy the project files in the Dockerfile | Re-run with `docker compose build --no-cache api`. |
+| `http://localhost/health` returns **400 Bad Request** | `appsettings.Production.json` has `AllowedHosts: "__SET_VIA_ENV__"`. The Host-filtering middleware rejects every request. | Make sure the `AllowedHosts: "*"` line is present in the `api` `environment:` block of `docker-compose.yml` (File 7). Then `docker compose up -d --force-recreate api`. |
+| Uploaded event image returns **404** at `/uploads/...` | Reverse proxy has no `/uploads/` route, so the request falls through to the SPA container. | Confirm `proxy/nginx.conf` (File 6) includes the `location /uploads/ { proxy_pass http://api_upstream; }` block, then `docker compose restart proxy`. |
+| Image was visible, then disappeared after rebuild | API container's `/app/wwwroot/uploads` is ephemeral. | Confirm the `uploads:/app/wwwroot/uploads` volume mount and the `uploads:` entry under top-level `volumes:` in `docker-compose.yml` (File 7). Re-upload the image. |
+| Every page refresh forces you to sign in again | `environment.prod.ts` is missing `cacheLocation: 'localstorage'` and `useRefreshTokens: true`, so the SDK keeps tokens in memory only. | Apply Section 3.4.2, then **rebuild** the web image: `docker compose up -d --build web`. Hard-refresh the browser (Ctrl+Shift+R). |
 | SPA loads but login fails | Auth0 callback URL doesn't include `http://localhost` | Auth0 dashboard → Applications → your SPA → add `http://localhost, http://localhost/auth/callback` to **Allowed Callback URLs**, `http://localhost` to **Allowed Logout URLs** and **Allowed Web Origins**. Save. |
 
 ### ✅ Stop & verify
@@ -780,6 +832,7 @@ Now we tell it about the database and Auth0.
    | `Auth0__Audience` | `https://eventsync-api` |
    | `ASPNETCORE_ENVIRONMENT` | `Production` |
    | `WEBSITES_PORT` | `8080` |
+   | `AllowedHosts` | `*` *(or your App Service hostname, e.g. `eventsync-api-<suffix>.azurewebsites.net`)* |
 
    We'll add `AllowedOrigins__0` and `Frontend__BaseUrl` after A.2.5 (we need the SWA URL first).
 
@@ -794,8 +847,11 @@ az webapp config appsettings set --name "eventsync-api-$SUFFIX" --resource-group
     "Auth0__Domain=<your-tenant>.auth0.com" `
     "Auth0__Audience=https://eventsync-api" `
     "ASPNETCORE_ENVIRONMENT=Production" `
-    "WEBSITES_PORT=8080"
+    "WEBSITES_PORT=8080" `
+    "AllowedHosts=*"
 ```
+
+> ⚠ **Heads-up about uploaded images.** App Service's local disk is *persistent within a single instance*, so the API's `wwwroot/uploads` folder survives restarts — but it's lost if you ever scale out (multiple instances), redeploy, or swap slots. For a portfolio site on F1 (single instance, no swap) this is fine. To make it bulletproof, mount an [Azure Files share](https://learn.microsoft.com/azure/app-service/configure-connect-to-azure-storage) at `/home/site/wwwroot/wwwroot/uploads` or refactor the API to store uploads in Azure Blob Storage.
 
 #### A.2.5 Azure Static Web Apps (3 min)
 
@@ -1196,6 +1252,7 @@ App Runner runs outside your VPC by default. The DB is inside the VPC with publi
    | Name | Value |
    |------|-------|
    | `ASPNETCORE_ENVIRONMENT` | `Production` |
+   | `AllowedHosts` | `*` *(or your CloudFront hostname after B.2.6)* |
    | `ConnectionStrings__DefaultConnection` | the RDS string from B.2.1 |
    | `Auth0__Domain` | your Auth0 domain |
    | `Auth0__Audience` | `https://eventsync-api` |
@@ -1207,6 +1264,8 @@ App Runner runs outside your VPC by default. The DB is inside the VPC with publi
 11. **Create & deploy**. Wait 5–10 min.
 
 ✅ Service status: **Running**. Note the **Default domain** (e.g., `https://xxxxx.us-east-1.awsapprunner.com`) — that's your API URL.
+
+> ⚠ **Heads-up about uploaded images.** App Runner container disk is **fully ephemeral** — every deployment (and every auto-scaled instance) starts with an empty `wwwroot/uploads`. The local-Docker upload flow will *appear* to work but files will vanish on the next deploy. For production-grade uploads, refactor the API's `UploadEndpoints` to write to an **S3 bucket** (signed URLs back to the client) instead of the local filesystem. Until then, treat uploads as throwaway.
 
 > 💸 **Cost note.** App Runner bills per active hour even with zero traffic — about $5–7/month minimum. To shut it off: **Pause** the service when not using it (pause is free; resume takes ~2 minutes).
 >
