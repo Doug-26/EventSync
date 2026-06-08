@@ -217,6 +217,15 @@ builder.Services.AddSwaggerGen(options =>
 
 var app = builder.Build();
 
+// Auto-apply EF Core migrations in non-Development environments.
+// Keeps deploys to Docker / Azure / AWS hands-free.
+if (!app.Environment.IsDevelopment())
+{
+    using var scope = app.Services.CreateScope();
+    var db = scope.ServiceProvider.GetRequiredService<EventSync.Api.Data.AppDbContext>();
+    await db.Database.MigrateAsync();
+}
+
 // ---------------------------------------------------------------------------
 // HTTP request pipeline
 //

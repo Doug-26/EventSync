@@ -43,3 +43,14 @@ TestResults/
 
 # ----- User uploads (runtime data, not source) -----
 **/wwwroot/uploads/
+
+# Local secrets — NEVER commit
+.env
+
+# Build outputs
+**/publish/
+**/bin/
+**/obj/
+**/dist/
+**/node_modules/
+**/.angular/
