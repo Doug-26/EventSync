@@ -1225,6 +1225,31 @@ docker tag eventsync-api:latest "$ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com/event
 docker push "$ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com/eventsync-api:latest"
 ```
 
+What each command does:
+
+1. `aws ecr create-repository ...`
+  Creates a private ECR repository named `eventsync-api` in your selected region.
+2. `aws ecr get-login-password ... | docker login ...`
+  Gets a short-lived auth token from AWS and logs Docker into your private ECR registry.
+3. `docker build -t eventsync-api -f server/Dockerfile server/`
+  Builds your API image from `server/Dockerfile` and tags it locally as `eventsync-api:latest`.
+4. `docker tag eventsync-api:latest .../eventsync-api:latest`
+  Adds an ECR-formatted tag so Docker knows where to push the image.
+5. `docker push .../eventsync-api:latest`
+  Uploads the image layers to ECR so App Runner can pull and deploy them.
+
+If you are using **Command Prompt** (`cmd.exe`) instead of PowerShell:
+
+```cmd
+aws ecr create-repository --repository-name eventsync-api --region %REGION%
+
+aws ecr get-login-password --region %REGION% | docker login --username AWS --password-stdin %ACCOUNT_ID%.dkr.ecr.%REGION%.amazonaws.com
+
+docker build -t eventsync-api -f server/Dockerfile server/
+docker tag eventsync-api:latest %ACCOUNT_ID%.dkr.ecr.%REGION%.amazonaws.com/eventsync-api:latest
+docker push %ACCOUNT_ID%.dkr.ecr.%REGION%.amazonaws.com/eventsync-api:latest
+```
+
 ✅ Console → ECR → **Repositories** → `eventsync-api` → an image with tag `latest`.
 
 #### B.2.3 VPC connector so App Runner can reach RDS
@@ -1273,15 +1298,26 @@ App Runner runs outside your VPC by default. The DB is inside the VPC with publi
 
 #### B.2.5 S3 bucket for the SPA (3 min)
 
+PowerShell:
+
 ```powershell
 $BUCKET = "eventsync-web-$SUFFIX"
 aws s3api create-bucket --bucket $BUCKET --region $REGION `
   --create-bucket-configuration LocationConstraint=$REGION
 ```
 
+Command Prompt (`cmd.exe`):
+
+```cmd
+set BUCKET=eventsync-web-%SUFFIX%
+aws s3api create-bucket --bucket %BUCKET% --region %REGION% --create-bucket-configuration LocationConstraint=%REGION%
+```
+
 (Omit the `--create-bucket-configuration` flag if your region is `us-east-1`.)
 
 Build the SPA (the relative `/api/v1` from `environment.prod.ts` will be routed by CloudFront to App Runner — no env file edit needed):
+
+PowerShell:
 
 ```powershell
 cd client
@@ -1289,6 +1325,16 @@ npm ci
 npm run build -- --configuration=production
 
 aws s3 sync ./dist/client/browser "s3://$BUCKET" --delete
+```
+
+Command Prompt (`cmd.exe`):
+
+```cmd
+cd client
+npm ci
+npm run build -- --configuration=production
+
+aws s3 sync .\dist\client\browser s3://%BUCKET% --delete
 ```
 
 #### B.2.6 CloudFront distribution (5 min + ~20 min propagation)
