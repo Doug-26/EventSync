@@ -57,7 +57,7 @@ You will deploy the same three components three different ways:
 |---|---|---|---|
 | **Local Docker** (Section 3) | container | container behind Nginx | container |
 | **Azure** (Section 4) | App Service | Static Web Apps | Azure SQL (Free Offer) |
-| **AWS** (Section 5) | App Runner | S3 + CloudFront | RDS SQL Server Express |
+| **AWS** (Section 5) | Elastic Beanstalk | S3 + CloudFront | RDS SQL Server Express |
 
 ### Tools you need on the new laptop
 
@@ -1104,13 +1104,13 @@ Go to GitHub → **Actions** tab → watch both workflows turn green. ✅
    Browser
      │ HTTPS
      ▼
-   CloudFront ───/api/*───▶  App Runner (.NET 10 container)
+   CloudFront ───/api/*───▶  Elastic Beanstalk (.NET 10 container on t3.micro)
      │                          │
      ▼                          ▼
    S3 (Angular SPA)         RDS SQL Server Express (Free Tier)
 ```
 
-**Estimated cost:** $0 for the first 12 months **only if** you stay within free-tier hours. App Runner has no free tier — see B.2.4 for the tradeoff.
+**Estimated cost:** $0 for the first 12 months **only if** you stay within free-tier hours. Elastic Beanstalk on a single `t3.micro` EC2 instance is free-tier eligible (750 hours/month) — see B.2.4.
 
 ### 5.1 AWS concepts in 60 seconds
 
@@ -1122,11 +1122,11 @@ Go to GitHub → **Actions** tab → watch both workflows turn green. ✅
 >
 > **ECR** — Elastic Container Registry. AWS's equivalent of Docker Hub. Stores your built images.
 >
-> **App Runner** — managed container hosting. Hand it an image, get a public HTTPS URL. Easier than ECS Fargate, no servers to manage. **Important:** App Runner has **no free tier** — minimum ~$5/month even idle. Tradeoff: simplicity vs. cost. If you want truly $0, use Elastic Beanstalk on a `t3.micro` EC2 (free 750 hr/month) — see B.2.4.
+> **Elastic Beanstalk** — a managed platform that provisions and runs your app on an EC2 instance for you (it wires up the instance, security, health checks, and deploys). You hand it your container image (via a small `Dockerrun.aws.json`) and it runs it. A single `t3.micro` instance is **free-tier eligible** for 12 months (750 hours/month). **Note:** AWS App Runner stopped accepting new customers on April 30, 2026, so this guide uses Elastic Beanstalk instead.
 >
 > **S3** — object storage (files). Can also host static websites.
 >
-> **CloudFront** — global CDN. Sits in front of S3 (and optionally App Runner) for HTTPS, caching, low latency.
+> **CloudFront** — global CDN. Sits in front of S3 (and optionally Elastic Beanstalk) for HTTPS, caching, low latency.
 >
 > **RDS** — Relational Database Service. Managed SQL Server. **SQL Server Express Edition** is the only SKU eligible for the 12-month free tier.
 
@@ -1138,7 +1138,7 @@ Have:                              Adding:
 Code on GitHub                     IAM user + AWS CLI configured
 Working Docker setup               RDS SQL Server Express (Free Tier)
                                    ECR repository
-                                   App Runner service (.NET 10 API)
+                                   Elastic Beanstalk env (.NET 10 API)
                                    S3 bucket + CloudFront (Angular SPA)
                                    GitHub Actions for auto-deploy
                                    $1 AWS Budget alert
@@ -1195,7 +1195,7 @@ Working Docker setup               RDS SQL Server Express (Free Tier)
 9. Storage: 20 GiB. **Uncheck** "Enable storage autoscaling" to avoid surprises.
 10. Connectivity:
     - VPC: default.
-    - **Public access: No.** *(App Runner will reach it via VPC connector.)*
+    - **Public access: No.** *(Elastic Beanstalk reaches it privately inside the same VPC.)*
     - VPC security group: **Create new** → name `eventsync-db-sg`.
 11. Database authentication: **Password authentication**.
 12. Additional configuration → Initial database name: `EventSync`.
@@ -1236,7 +1236,7 @@ What each command does:
 4. `docker tag eventsync-api:latest .../eventsync-api:latest`
   Adds an ECR-formatted tag so Docker knows where to push the image.
 5. `docker push .../eventsync-api:latest`
-  Uploads the image layers to ECR so App Runner can pull and deploy them.
+  Uploads the image layers to ECR so Elastic Beanstalk can pull and deploy them.
 
 If you are using **Command Prompt** (`cmd.exe`) instead of PowerShell:
 
@@ -1252,49 +1252,88 @@ docker push %ACCOUNT_ID%.dkr.ecr.%REGION%.amazonaws.com/eventsync-api:latest
 
 ✅ Console → ECR → **Repositories** → `eventsync-api` → an image with tag `latest`.
 
-#### B.2.3 VPC connector so App Runner can reach RDS
+#### B.2.3 Create a security group for the API and open the DB to it
 
-App Runner runs outside your VPC by default. The DB is inside the VPC with public access off, so we need a bridge.
-
-**Console:**
-1. Search **VPC** → **Subnets** → note the IDs of two **private** or default subnets in different AZs.
-2. Search **App Runner** → **VPC connectors** → **Create**.
-3. Name: `eventsync-vpc-connector`. VPC: default. Subnets: pick the two from step 1. Security group: pick the **default** security group of the VPC. → **Create**.
-4. Now open the **RDS security group** (`eventsync-db-sg`) → **Inbound rules** → **Edit** → **Add rule** → Type **MSSQL** (1433), Source → the **default** security group (the same one you attached to the VPC connector) → **Save**.
-
-#### B.2.4 Create the App Runner service (5 min)
+Elastic Beanstalk will run your API on an EC2 instance inside your VPC. That instance must reach RDS on port 1433. We pre-create a security group now, then attach it to the Beanstalk environment in B.2.4.
 
 **Console:**
-1. Search **App Runner** → **Create service**.
-2. Source: **Container registry** → **Amazon ECR**.
-3. Container image URI: click **Browse** → pick `eventsync-api` → **latest**.
-4. Deployment trigger: **Manual** (we'll automate via GitHub Actions in B.4).
-5. ECR access role: **Create new service role** → next.
-6. Service name: `eventsync-api`. CPU 0.25 vCPU, Memory 0.5 GB *(smallest).*
-7. Port: `8080`.
-8. Environment variables (click **Add environment variable**):
+1. Search **EC2** → left menu **Security Groups** → **Create security group**.
+   - Name: `eventsync-eb-sg`.
+   - Description: `EventSync API (Elastic Beanstalk) instances`.
+   - VPC: the **default** VPC (the same one your RDS uses).
+   - Leave inbound empty; leave outbound as default (all traffic). → **Create security group**.
+2. Open the **RDS security group** (`eventsync-db-sg`) → **Inbound rules** → **Edit** → **Add rule**:
+   - Type **MSSQL** (port 1433).
+   - Source → select `eventsync-eb-sg`.
+   - **Save rules**.
 
-   | Name | Value |
-   |------|-------|
-   | `ASPNETCORE_ENVIRONMENT` | `Production` |
-   | `AllowedHosts` | `*` *(or your CloudFront hostname after B.2.6)* |
-   | `ConnectionStrings__DefaultConnection` | the RDS string from B.2.1 |
-   | `Auth0__Domain` | your Auth0 domain |
-   | `Auth0__Audience` | `https://eventsync-api` |
-   | `AllowedOrigins__0` | we'll fill in after B.2.5 (use a placeholder for now) |
-   | `Frontend__BaseUrl` | same placeholder |
+#### B.2.4 Create the Elastic Beanstalk environment (10 min)
 
-9. Networking: **Custom VPC** → select `eventsync-vpc-connector` from B.2.3.
-10. Health check: HTTP, path `/health`.
-11. **Create & deploy**. Wait 5–10 min.
+Elastic Beanstalk (EB) runs your container image on a managed EC2 instance. On a single `t3.micro` instance it fits inside the 12-month free tier.
 
-✅ Service status: **Running**. Note the **Default domain** (e.g., `https://xxxxx.us-east-1.awsapprunner.com`) — that's your API URL.
+**First, create the deploy descriptor.** In your repo, create `server/Dockerrun.aws.json` — this tells EB which image to run and which port to expose:
 
-> ⚠ **Heads-up about uploaded images.** App Runner container disk is **fully ephemeral** — every deployment (and every auto-scaled instance) starts with an empty `wwwroot/uploads`. The local-Docker upload flow will *appear* to work but files will vanish on the next deploy. For production-grade uploads, refactor the API's `UploadEndpoints` to write to an **S3 bucket** (signed URLs back to the client) instead of the local filesystem. Until then, treat uploads as throwaway.
+```json
+{
+  "AWSEBDockerrunVersion": "1",
+  "Image": {
+    "Name": "REPLACE_ACCOUNT_ID.dkr.ecr.ap-southeast-1.amazonaws.com/eventsync-api:latest",
+    "Update": "true"
+  },
+  "Ports": [
+    { "ContainerPort": 8080, "HostPort": 80 }
+  ]
+}
+```
 
-> 💸 **Cost note.** App Runner bills per active hour even with zero traffic — about $5–7/month minimum. To shut it off: **Pause** the service when not using it (pause is free; resume takes ~2 minutes).
->
-> **Free-tier alternative:** use Elastic Beanstalk on `t3.micro` (750 free hours/month for 12 months). Setup is more involved; see the AWS Skill Builder "Deploy a .NET App on Elastic Beanstalk" tutorial. The rest of this section (S3 + CloudFront + RDS + CI/CD) works the same way.
+Replace `REPLACE_ACCOUNT_ID` (and the region, if yours differs) with your real values. Then zip just this file for upload:
+
+PowerShell:
+```powershell
+Compress-Archive -Path server\Dockerrun.aws.json -DestinationPath eb-app.zip -Force
+```
+
+Command Prompt (`cmd.exe`):
+```cmd
+powershell -Command "Compress-Archive -Path server\Dockerrun.aws.json -DestinationPath eb-app.zip -Force"
+```
+
+**Console:**
+1. Search **Elastic Beanstalk** → **Create application**.
+2. Application name: `eventsync-api`.
+3. Environment tier: **Web server environment**.
+4. Platform: **Docker** → Platform branch: **Docker running on 64bit Amazon Linux 2023**.
+5. Application code: **Upload your code** → upload `eb-app.zip`.
+6. Presets: **Single instance (free tier eligible)**. → **Next**.
+7. **Service access**: allow EB to **create and use a new service role**; for the EC2 instance profile, pick `aws-elasticbeanstalk-ec2-role` (or let EB create it). → **Next**.
+8. **Set up networking, database, and tags**:
+   - VPC: your **default** VPC.
+   - Public IP address: **Activated**.
+   - Instance subnets: check at least one subnet (two is fine). → **Next**.
+9. **Configure instance traffic and scaling**:
+   - **EC2 security groups**: check `eventsync-eb-sg` (from B.2.3).
+   - Instance type: **t3.micro**. → **Next**.
+10. **Configure updates, monitoring, and logging** → scroll to **Environment properties** → add each:
+
+    | Name | Value |
+    |------|-------|
+    | `ASPNETCORE_ENVIRONMENT` | `Production` |
+    | `AllowedHosts` | `*` |
+    | `ConnectionStrings__DefaultConnection` | the RDS string from B.2.1 |
+    | `Auth0__Domain` | your Auth0 domain |
+    | `Auth0__Audience` | `https://eventsync-api` |
+    | `AllowedOrigins__0` | placeholder (fill after B.2.6) |
+    | `Frontend__BaseUrl` | placeholder (fill after B.2.6) |
+
+11. **Next** → review → **Submit**. Wait 5–10 min.
+
+✅ Environment health goes **Green**/**OK**. Copy the environment **Domain** (e.g., `eventsync-api-env.eba-xxxx.ap-southeast-1.elasticbeanstalk.com`) — that's your API URL. Test `http://<eb-domain>/health` → `{"status":"healthy",...}`.
+
+> ⚠ **ECR pull permission.** The EC2 instance profile must be allowed to read ECR. If the environment shows an image-pull error in **Logs**, attach the `AmazonEC2ContainerRegistryReadOnly` policy to the `aws-elasticbeanstalk-ec2-role` (IAM → Roles → that role → **Add permissions**), then **Actions → Restart app server(s)**.
+
+> ⚠ **Heads-up about uploaded images.** The Beanstalk EC2 instance disk is **ephemeral** — a redeploy or instance replacement starts with an empty `wwwroot/uploads`. The local-Docker upload flow will *appear* to work but files can vanish on the next deploy. For production-grade uploads, refactor the API's `UploadEndpoints` to write to an **S3 bucket** (signed URLs back to the client) instead of the local filesystem. Until then, treat uploads as throwaway.
+
+> 💸 **Cost note.** A single `t3.micro` fits the 12-month free tier (750 hours/month). After that, expect roughly **$9–10/month** for the EC2 instance. Keep the environment **Single instance** (no load balancer) to avoid the extra ~$18/month an ALB would add. To stop paying between demos: **Actions → Terminate environment** (recreate later from the same `eb-app.zip`).
 
 #### B.2.5 S3 bucket for the SPA (3 min)
 
@@ -1315,7 +1354,7 @@ aws s3api create-bucket --bucket %BUCKET% --region %REGION% --create-bucket-conf
 
 (Omit the `--create-bucket-configuration` flag if your region is `us-east-1`.)
 
-Build the SPA (the relative `/api/v1` from `environment.prod.ts` will be routed by CloudFront to App Runner — no env file edit needed):
+Build the SPA (the relative `/api/v1` from `environment.prod.ts` will be routed by CloudFront to Elastic Beanstalk — no env file edit needed):
 
 PowerShell:
 
@@ -1339,7 +1378,7 @@ aws s3 sync .\dist\client\browser s3://%BUCKET% --delete
 
 #### B.2.6 CloudFront distribution (5 min + ~20 min propagation)
 
-CloudFront does three jobs for us: serves the SPA over HTTPS, fixes SPA routing (404 → `/index.html`), and forwards `/api/*` to App Runner so the SPA's relative URLs work.
+CloudFront does three jobs for us: serves the SPA over HTTPS, fixes SPA routing (404 → `/index.html`), and forwards `/api/*` to Elastic Beanstalk so the SPA's relative URLs work.
 
 **Console:**
 1. Search **CloudFront** → **Create distribution**.
@@ -1355,12 +1394,12 @@ CloudFront does three jobs for us: serves the SPA over HTTPS, fixes SPA routing 
 After it's created (the table shows **Deployed**, ~15–20 min):
 
 8. Open the distribution → **Origins** tab → **Create origin**:
-   - Origin domain: the App Runner default domain (just the hostname, no `https://`).
-   - Protocol: **HTTPS only**. Port 443.
-   - Name: `apprunner-api`. → **Create origin**.
+   - Origin domain: the Elastic Beanstalk environment domain (just the hostname, no `http://`).
+   - Protocol: **HTTP only**. Port 80. *(Single-instance EB serves plain HTTP; CloudFront adds HTTPS for the browser.)*
+   - Name: `eb-api`. → **Create origin**.
 9. **Behaviors** tab → **Create behavior**:
    - Path pattern: `/api/*`.
-   - Origin: `apprunner-api`.
+   - Origin: `eb-api`.
    - Viewer protocol policy: **Redirect HTTP to HTTPS**.
    - Allowed HTTP methods: **GET, HEAD, OPTIONS, PUT, POST, PATCH, DELETE**.
    - Cache policy: **CachingDisabled**.
@@ -1374,16 +1413,16 @@ After it's created (the table shows **Deployed**, ~15–20 min):
 
 ✅ Open the **Distribution domain name** (e.g., `https://d1234abcd.cloudfront.net`) → SPA loads.
 
-#### B.2.7 Finish App Runner config
+#### B.2.7 Finish Elastic Beanstalk config
 
-Go back to App Runner → `eventsync-api` → **Configuration** → **Edit configuration** → update the placeholders:
+Go back to Elastic Beanstalk → `eventsync-api` environment → **Configuration** → **Updates, monitoring, and logging** → **Edit** → **Environment properties** → update the placeholders:
 
 | Name | Value |
 |------|-------|
 | `AllowedOrigins__0` | your CloudFront URL (e.g., `https://d1234abcd.cloudfront.net`) |
 | `Frontend__BaseUrl` | same |
 
-**Deploy** to apply. ✅ Service goes through "Operation in progress" → "Running".
+**Apply** to save. ✅ The environment updates and returns to **Green**/**OK**.
 
 ### B.3 Auth0 production callbacks
 
@@ -1409,7 +1448,9 @@ GitHub repo → **Settings** → **Secrets and variables** → **Actions** → a
 
 Also add:
 
-- `APPRUNNER_SERVICE_ARN` — App Runner → your service → **Configuration** → copy the **Service ARN**.
+- `EB_APPLICATION_NAME` — `eventsync-api`.
+- `EB_ENVIRONMENT_NAME` — your EB environment name (e.g., `eventsync-api-env`).
+- `EB_S3_BUCKET` — the Elastic Beanstalk storage bucket (e.g., `elasticbeanstalk-ap-southeast-1-<account-id>`), created automatically the first time you use Elastic Beanstalk.
 - `ECR_REPOSITORY` — `eventsync-api`.
 - `S3_BUCKET` — your bucket name from B.2.5.
 - `CLOUDFRONT_DISTRIBUTION_ID` — CloudFront → your distribution → ID.
@@ -1417,7 +1458,7 @@ Also add:
 #### B.4.2 API workflow — `.github/workflows/aws-api-deploy.yml`
 
 ```yaml
-name: Deploy API to AWS App Runner
+name: Deploy API to AWS Elastic Beanstalk
 
 on:
   push:
@@ -1452,10 +1493,27 @@ jobs:
           docker push $REGISTRY/$REPO:$TAG
           docker push $REGISTRY/$REPO:latest
 
-      - name: Trigger App Runner deployment
+      - name: Package Dockerrun for Elastic Beanstalk
+        run: zip -j eb-app.zip server/Dockerrun.aws.json
+
+      - name: Create EB application version and deploy
+        env:
+          APP: ${{ secrets.EB_APPLICATION_NAME }}
+          ENVNAME: ${{ secrets.EB_ENVIRONMENT_NAME }}
+          BUCKET: ${{ secrets.EB_S3_BUCKET }}
+          VERSION: ${{ github.sha }}
         run: |
-          aws apprunner start-deployment --service-arn ${{ secrets.APPRUNNER_SERVICE_ARN }}
+          aws s3 cp eb-app.zip "s3://$BUCKET/eventsync-api/$VERSION.zip"
+          aws elasticbeanstalk create-application-version \
+            --application-name "$APP" \
+            --version-label "$VERSION" \
+            --source-bundle S3Bucket="$BUCKET",S3Key="eventsync-api/$VERSION.zip"
+          aws elasticbeanstalk update-environment \
+            --environment-name "$ENVNAME" \
+            --version-label "$VERSION"
 ```
+
+> ℹ️ Because `Dockerrun.aws.json` references the `:latest` tag, each deploy creates a new EB application version that re-pulls the freshly pushed image. The IAM user needs `elasticbeanstalk:*`, `s3:PutObject` on the EB bucket, and ECR push permissions (covered by `AdministratorAccess` from B.1).
 
 #### B.4.3 SPA workflow — `.github/workflows/aws-web-deploy.yml`
 
@@ -1518,7 +1576,7 @@ git push
 
 1. Open CloudFront URL → log in → create event → invite link → submit RSVP in incognito. All should work.
 
-2. **Set a $1 budget alert** — App Runner + RDS-over-quota can quietly add up:
+2. **Set a $1 budget alert** — Elastic Beanstalk EC2 + RDS-over-quota can quietly add up:
 
    - Console → **Billing and Cost Management** → **Budgets** → **Create budget**.
    - Template: **Monthly cost budget** → next.
@@ -1532,11 +1590,11 @@ git push
 
 | Task | How |
 |------|-----|
-| **View API logs** | App Runner → service → **Logs** tab. |
+| **View API logs** | Elastic Beanstalk → environment → **Logs** → **Request logs**. |
 | **View SPA logs** | GitHub → **Actions** → click the run. |
-| **Roll back the API** | App Runner → **Activity** → previous deployment → ⋯ → **Redeploy**, OR push the previous git commit. |
-| **Pause App Runner to save $** | App Runner → service → **Actions** → **Pause**. Resume in ~2 min. |
-| **Wipe everything** (in dependency order) | App Runner → **Delete service**; CloudFront → **Disable** then **Delete**; S3 → **Empty bucket** then **Delete**; ECR → **Delete repository**; RDS → **Delete** (uncheck "Create final snapshot"); VPC connector → **Delete**. |
+| **Roll back the API** | Elastic Beanstalk → environment → **Application versions** → select a previous version → **Deploy**, OR push the previous git commit. |
+| **Stop paying between demos** | Elastic Beanstalk → environment → **Actions** → **Terminate environment**. Recreate later from `eb-app.zip`. |
+| **Wipe everything** (in dependency order) | Elastic Beanstalk → **Terminate environment**, then delete the application; CloudFront → **Disable** then **Delete**; S3 → **Empty bucket** then **Delete**; ECR → **Delete repository**; RDS → **Delete** (uncheck "Create final snapshot"); security group `eventsync-eb-sg` → **Delete**. |
 
 ### ✅ Stop & verify (Track B complete)
 
@@ -1574,9 +1632,9 @@ Never edit on both at once without pushing — you'll create merge conflicts.
 | Symptom | Local Docker | Azure | AWS |
 |---------|--------------|-------|-----|
 | White page on SPA | `docker compose logs web` | SWA → **Functions** → **Invocations** | CloudFront → distribution → check origin status |
-| API 500s | `docker compose logs api` | App Service → **Log stream** | App Runner → **Logs** |
+| API 500s | `docker compose logs api` | App Service → **Log stream** | Elastic Beanstalk → environment → **Logs** |
 | Login fails (Auth0) | Browser dev tools → Network tab → look at the `/authorize` request URL | same | same |
-| DB connection refused | `docker compose logs db` | App Service → Log stream → look for "connection timeout" | App Runner → Logs → look for "Network-related" errors. Check the security group rule in B.2.3. |
+| DB connection refused | `docker compose logs db` | App Service → Log stream → look for "connection timeout" | Elastic Beanstalk → Logs → look for "Network-related" errors. Check the security group rule in B.2.3. |
 
 ### 6.3 Rotate Auth0 credentials
 
@@ -1588,7 +1646,7 @@ If a secret leaks:
    - Local: `appsettings.Development.json`.
    - Docker: `.env`.
    - Azure: App Service → Environment variables.
-   - AWS: App Runner → Configuration → Environment variables → Deploy.
+   - AWS: Elastic Beanstalk → environment → Configuration → Environment properties → Apply.
 4. The **Client ID** is **not** a secret — it's embedded in the SPA bundle by design. Don't try to "hide" it.
 
 ### 6.4 Updating the app
@@ -1615,7 +1673,7 @@ Just push to `main`. The right CI/CD workflow picks up the change (Azure files t
 | **App Service** (Azure) | Managed web app hosting. |
 | **App Service Plan** | The machine your App Services run on. |
 | **Static Web Apps** (Azure) | Managed hosting purpose-built for SPAs. |
-| **App Runner** (AWS) | Managed container hosting (simpler than ECS Fargate). |
+| **Elastic Beanstalk** (AWS) | Managed platform that provisions an EC2 instance and runs your container on it. |
 | **S3** | AWS object storage. Can host static websites. |
 | **CloudFront** | AWS global CDN. |
 | **RDS** | Managed relational database (AWS). |
@@ -1656,8 +1714,8 @@ az group delete --name eventsync-rg --yes --no-wait    # ☢ delete everything
 aws sts get-caller-identity
 aws s3 ls
 aws s3 sync ./dist/client/browser s3://my-bucket --delete
-aws apprunner list-services
-aws apprunner start-deployment --service-arn <arn>
+aws elasticbeanstalk describe-environments --environment-names eventsync-api-env
+aws elasticbeanstalk update-environment --environment-name eventsync-api-env --version-label <label>
 aws cloudfront create-invalidation --distribution-id <id> --paths "/*"
 aws rds describe-db-instances --db-instance-identifier eventsync-db
 ```
@@ -1676,7 +1734,7 @@ SPA shows white page
 API returns 500
 ├── Local Docker  → docker compose logs api
 ├── Azure         → App Service → Log stream
-└── AWS           → App Runner → Logs tab
+└── AWS           → Elastic Beanstalk → environment → Logs
     → look for stack trace. Common: DB connection refused (security group, password, server name).
 
 Login fails (Auth0)
@@ -1704,7 +1762,7 @@ When a concept doesn't click, these **free, vendor-official** resources are the 
 
 ### AWS
 - AWS Cloud Practitioner Essentials (free) — `aws.amazon.com/training/learn-about/cloud-practitioner/`
-- App Runner workshop — `catalog.workshops.aws/apprunner`
+- Elastic Beanstalk Docker platform docs — `docs.aws.amazon.com/elasticbeanstalk/latest/dg/create_deploy_docker.html`
 - S3 + CloudFront static site tutorial — `docs.aws.amazon.com/AmazonS3/latest/userguide/website-hosting-cloudfront-walkthrough.html`
 
 ### EF Core
