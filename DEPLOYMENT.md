@@ -716,7 +716,8 @@ Working Docker setup               Azure SQL Database (Free Offer)
 3. Pick a region close to you and set it as a variable for this terminal session:
 
    ```powershell
-   $REGION = "eastasia"     # or "westus2", "westeurope", etc.
+   $REGION = "southeastasia"   # Singapore — closest Azure hub for Philippines/SEA users
+                               # Alternatives: "eastasia" (Hong Kong), "westus2", "westeurope"
    $SUFFIX = "demo$(Get-Random -Maximum 9999)"  # makes globally unique names
    ```
 
@@ -742,31 +743,35 @@ az group create --name eventsync-rg --location $REGION
 
 #### A.2.2 Azure SQL Database — Free Offer (5 min)
 
-> ⚠ **The Free Offer is NOT the default option.** You'll be tempted to pick "Basic" because it's first. Don't — read carefully.
+> ℹ️ **The portal now uses a simplified form** that pre-applies the Free offer automatically. The steps below match the current 2026 UI.
 
 **Portal:**
 1. Top search bar → `SQL databases` → click the service → **+ Create**.
-2. **Basics** tab:
-   - Resource group: `eventsync-rg`.
-   - Database name: `EventSync`.
-   - Server: click **Create new**.
-     - Server name: `eventsync-sql-<your-suffix>` (must be globally unique, lowercase, no spaces).
-     - Location: same region.
+2. The **Basics** tab now shows a **"Free offer applied"** banner at the top with a cost summary on the right showing **$0.00** for Compute and Storage. This is correct — do not change it.
+3. Fill in the fields:
+   - **Subscription**: Azure subscription 1.
+   - **Resource group**: `eventsync-rg`.
+   - **Database name**: `EventSync`.
+   - **Server**: click **Create new**.
+     - Server name: `eventsync-sql-<your-name>` (must be globally unique, all lowercase, no spaces — e.g. `eventsync-sql-delacruz`).
+     - Location: **Southeast Asia**.
      - Authentication method: **Use SQL authentication**.
      - Server admin login: `eventsyncadmin`.
      - Password: pick a strong one and **save it in your password manager.**
      - Click **OK**.
-   - Want to use SQL elastic pool? **No**.
-   - Workload environment: **Development**.
-   - **Compute + storage** → click **Configure database** → at the very top, look for **Apply offer** or a banner saying *"Try Azure SQL Database serverless for free"* → click **Apply** → **Apply**.
 
-   > ⚠ **Verify before leaving this screen.** The pricing summary at the bottom of **Review + create** must show **$0.00/month**. If it shows any other amount, go back and re-apply the Free Offer. Once created on the wrong tier, there is no in-place downgrade — you would have to recreate the database.
+   > ⚠ **Verify the cost summary on the right** shows **Estimated total: Free** (in green) before proceeding. If it shows any dollar amount, click **Advanced configuration** and look for a free offer toggle.
 
-3. **Networking** tab:
-   - Connectivity method: **Public endpoint**.
-   - Allow Azure services and resources to access this server: **Yes**.
-   - Add current client IPv4 address: **Yes**.
-4. **Review + create** → **Create**. Wait 3–5 minutes.
+4. Click **Review + create** → **Create**. Wait 3–5 minutes.
+
+5. **Set up firewall rules after creation** (replaces the old Networking tab):
+   - Once the database is deployed, open the **SQL server** resource (not the database — it's named `eventsync-sql-<your-name>`).
+   - Left menu → **Security** → **Networking**.
+   - **Public access** tab:
+     - Public network access: **Selected networks**.
+     - Under **Firewall rules** → click **+ Add your client IPv4 address** (adds your current laptop IP).
+     - **Allow Azure services and resources to access this server**: check the checkbox.
+   - Click **Save**.
 
 **CLI alternative** (Free Offer is not directly available via the simple `az sql` CLI yet; this creates a Basic tier instead — Portal is recommended here):
 
@@ -799,16 +804,19 @@ Server=tcp:eventsync-sql-XXXX.database.windows.net,1433;Initial Catalog=EventSyn
 
 **Portal:**
 1. Top search bar → `App Services` → **+ Create** → **Web App**.
-2. **Basics**:
+2. **Basics** tab:
    - Resource group: `eventsync-rg`.
-   - Name: `eventsync-api-<suffix>` (becomes part of your URL: `eventsync-api-<suffix>.azurewebsites.net`).
+   - Name: `eventsync-api-<your-name>` (e.g. `eventsync-api-delacruz`) — this becomes your URL: `eventsync-api-delacruz.azurewebsites.net`.
    - Publish: **Code**.
-   - Runtime stack: **.NET 10 (LTS)**.
+   - Runtime stack: **.NET 10 (LTS)**. *(If .NET 10 doesn't appear, pick the highest .NET version available and check back later — Microsoft may have just released it.)*
    - Operating System: **Linux**.
-   - Region: same as before.
-   - Pricing plan: click **Change size** → **Free F1** → **Apply**.
+   - Region: **Southeast Asia**.
+   - **Pricing plan**: this is the critical field. Azure defaults to **B1 (~$13/month)**.
+     - Click the **Explore pricing plans** link or the pencil/edit icon next to the plan name.
+     - Select **Free F1** → **Select**.
+     - Confirm the plan now shows **F1 Free**.
 
-   > ⚠ **Azure defaults to B1 (~$13/month), not F1.** Always click **Change size** and confirm **F1** is selected before hitting Review + create. Also, if a screen offers to enable **Application Insights**, skip it — it has costs beyond a small free quota.
+   > ⚠ **Do not enable Application Insights** if a toggle or tab offers it — it has costs beyond a small free quota. Skip or leave it off.
 
 3. **Review + create** → **Create**. Wait 1–2 minutes.
 
@@ -838,7 +846,7 @@ Now we tell it about the database and Auth0.
    | `Auth0__Audience` | `https://eventsync-api` |
    | `ASPNETCORE_ENVIRONMENT` | `Production` |
    | `WEBSITES_PORT` | `8080` |
-   | `AllowedHosts` | `*` *(or your App Service hostname, e.g. `eventsync-api-<suffix>.azurewebsites.net`)* |
+   | `AllowedHosts` | `*` *(or your App Service hostname, e.g. `eventsync-api-delacruz.azurewebsites.net`)* |
 
    We'll add `AllowedOrigins__0` and `Frontend__BaseUrl` after A.2.5 (we need the SWA URL first).
 
