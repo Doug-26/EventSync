@@ -2,7 +2,7 @@
 /** Production environment configuration. Same shape as environment.ts. */
 export const environment = {
   production: true,
-  apiUrl: '/api/v1',
+  apiUrl: 'https://eventsync-api-h0frhdfsb3gbeth3.southeastasia-01.azurewebsites.net/api/v1',
   auth0: {
     domain: 'dev-nqo6u1us6l2sh6km.us.auth0.com',
     clientId: 'crFbObfbMi1KMNkUFYIlchE7snX7QvZe',
