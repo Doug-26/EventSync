@@ -676,7 +676,7 @@ git push
                                        Azure SQL Database (Free Offer)
 ```
 
-**Estimated cost:** $0 for the first 12 months within free quotas. After that, ~$5–15/month if you stay small.
+**Estimated cost:** $0/month — all three services used here are permanently free within their quotas (not 12-month limited). The only way to incur charges is to accidentally pick the wrong SQL tier, enable Application Insights, or exceed 5 GB/month outbound data. Follow the ⚠ callouts below to avoid all three.
 
 ### 4.1 Azure concepts in 60 seconds
 
@@ -716,7 +716,8 @@ Working Docker setup               Azure SQL Database (Free Offer)
 3. Pick a region close to you and set it as a variable for this terminal session:
 
    ```powershell
-   $REGION = "eastasia"     # or "westus2", "westeurope", etc.
+   $REGION = "southeastasia"   # Singapore — closest Azure hub for Philippines/SEA users
+                               # Alternatives: "eastasia" (Hong Kong), "westus2", "westeurope"
    $SUFFIX = "demo$(Get-Random -Maximum 9999)"  # makes globally unique names
    ```
 
@@ -742,28 +743,35 @@ az group create --name eventsync-rg --location $REGION
 
 #### A.2.2 Azure SQL Database — Free Offer (5 min)
 
-> ⚠ **The Free Offer is NOT the default option.** You'll be tempted to pick "Basic" because it's first. Don't — read carefully.
+> ℹ️ **The portal now uses a simplified form** that pre-applies the Free offer automatically. The steps below match the current 2026 UI.
 
 **Portal:**
 1. Top search bar → `SQL databases` → click the service → **+ Create**.
-2. **Basics** tab:
-   - Resource group: `eventsync-rg`.
-   - Database name: `EventSync`.
-   - Server: click **Create new**.
-     - Server name: `eventsync-sql-<your-suffix>` (must be globally unique, lowercase, no spaces).
-     - Location: same region.
+2. The **Basics** tab now shows a **"Free offer applied"** banner at the top with a cost summary on the right showing **$0.00** for Compute and Storage. This is correct — do not change it.
+3. Fill in the fields:
+   - **Subscription**: Azure subscription 1.
+   - **Resource group**: `eventsync-rg`.
+   - **Database name**: `EventSync`.
+   - **Server**: click **Create new**.
+     - Server name: `eventsync-sql-<your-name>` (must be globally unique, all lowercase, no spaces — e.g. `eventsync-sql-delacruz`).
+     - Location: **Southeast Asia**.
      - Authentication method: **Use SQL authentication**.
      - Server admin login: `eventsyncadmin`.
      - Password: pick a strong one and **save it in your password manager.**
      - Click **OK**.
-   - Want to use SQL elastic pool? **No**.
-   - Workload environment: **Development**.
-   - **Compute + storage** → click **Configure database** → at the very top, look for **Apply offer** or a banner saying *"Try Azure SQL Database serverless for free"* → click **Apply** → **Apply**.
-3. **Networking** tab:
-   - Connectivity method: **Public endpoint**.
-   - Allow Azure services and resources to access this server: **Yes**.
-   - Add current client IPv4 address: **Yes**.
-4. **Review + create** → **Create**. Wait 3–5 minutes.
+
+   > ⚠ **Verify the cost summary on the right** shows **Estimated total: Free** (in green) before proceeding. If it shows any dollar amount, click **Advanced configuration** and look for a free offer toggle.
+
+4. Click **Review + create** → **Create**. Wait 3–5 minutes.
+
+5. **Set up firewall rules after creation** (replaces the old Networking tab):
+   - Once the database is deployed, open the **SQL server** resource (not the database — it's named `eventsync-sql-<your-name>`).
+   - Left menu → **Security** → **Networking**.
+   - **Public access** tab:
+     - Public network access: **Selected networks**.
+     - Under **Firewall rules** → click **+ Add your client IPv4 address** (adds your current laptop IP).
+     - **Allow Azure services and resources to access this server**: check the checkbox.
+   - Click **Save**.
 
 **CLI alternative** (Free Offer is not directly available via the simple `az sql` CLI yet; this creates a Basic tier instead — Portal is recommended here):
 
@@ -796,14 +804,20 @@ Server=tcp:eventsync-sql-XXXX.database.windows.net,1433;Initial Catalog=EventSyn
 
 **Portal:**
 1. Top search bar → `App Services` → **+ Create** → **Web App**.
-2. **Basics**:
+2. **Basics** tab:
    - Resource group: `eventsync-rg`.
-   - Name: `eventsync-api-<suffix>` (becomes part of your URL: `eventsync-api-<suffix>.azurewebsites.net`).
+   - Name: `eventsync-api-<your-name>` (e.g. `eventsync-api-delacruz`) — this becomes your URL: `eventsync-api-delacruz.azurewebsites.net`.
    - Publish: **Code**.
-   - Runtime stack: **.NET 10 (LTS)**.
+   - Runtime stack: **.NET 10 (LTS)**. *(If .NET 10 doesn't appear, pick the highest .NET version available and check back later — Microsoft may have just released it.)*
    - Operating System: **Linux**.
-   - Region: same as before.
-   - Pricing plan: click **Change size** → **Free F1** → **Apply**.
+   - Region: **Southeast Asia**.
+   - **Pricing plan**: this is the critical field. Azure defaults to **B1 (~$13/month)**.
+     - Click the **Explore pricing plans** link or the pencil/edit icon next to the plan name.
+     - Select **Free F1** → **Select**.
+     - Confirm the plan now shows **F1 Free**.
+
+   > ⚠ **Do not enable Application Insights** if a toggle or tab offers it — it has costs beyond a small free quota. Skip or leave it off.
+
 3. **Review + create** → **Create**. Wait 1–2 minutes.
 
 **CLI alternative:**
@@ -832,7 +846,7 @@ Now we tell it about the database and Auth0.
    | `Auth0__Audience` | `https://eventsync-api` |
    | `ASPNETCORE_ENVIRONMENT` | `Production` |
    | `WEBSITES_PORT` | `8080` |
-   | `AllowedHosts` | `*` *(or your App Service hostname, e.g. `eventsync-api-<suffix>.azurewebsites.net`)* |
+   | `AllowedHosts` | `*` *(or your App Service hostname, e.g. `eventsync-api-delacruz.azurewebsites.net`)* |
 
    We'll add `AllowedOrigins__0` and `Frontend__BaseUrl` after A.2.5 (we need the SWA URL first).
 
@@ -1080,6 +1094,18 @@ Go to GitHub → **Actions** tab → watch both workflows turn green. ✅
 | **Wipe everything to save cost** | `az group delete --name eventsync-rg --yes --no-wait` — deletes every resource in the group. |
 | **Set a budget alert** | Top search → **Cost Management + Billing** → **Budgets** → **+ Add** → $5 monthly alert at 80%. |
 
+#### $0 cost verification checklist
+
+Run this once after provisioning to confirm nothing is billing unexpectedly:
+
+- [ ] **Azure SQL** — Portal → your database → **Overview** → Pricing tier shows **Free**.
+- [ ] **App Service plan** — Portal → `eventsync-plan` → **Pricing tier** shows **F1 Free**.
+- [ ] **Static Web Apps** — Portal → `eventsync-web` → **Overview** → Plan shows **Free**.
+- [ ] **Application Insights** — Portal → Resource group `eventsync-rg` → confirm no Application Insights resource exists.
+- [ ] **Budget alert** — Cost Management + Billing → Budgets → `eventsync-budget` is active with a $5 cap.
+
+> **What can still cause a charge:** Azure SQL Free Offer allows 100,000 vCore-seconds/month. At typical portfolio-app usage (a few logins and event creates per day) you will use well under 10% of this. The serverless tier auto-pauses after 1 hour of inactivity, so idle nights cost nothing. Outbound data over 5 GB/month would also add pennies — extremely unlikely for a portfolio app.
+
 ### ✅ Stop & verify (Track A complete)
 
 - `https://<random>.azurestaticapps.net` shows your app over HTTPS.
@@ -1087,6 +1113,7 @@ Go to GitHub → **Actions** tab → watch both workflows turn green. ✅
 - Creating an event persists across browser sessions.
 - A trivial commit to `main` triggers a green Actions run.
 - A $5 budget alert is configured.
+- The $0 cost verification checklist in A.7 is ticked off.
 
 🎉 **Azure deployment done.** Optional next step: [Section 5 (AWS)](#section-5--cloud-track-b-aws) for portfolio parity, or [Section 6](#section-6--maintenance--day-2-operations) for day-2 ops.
 
@@ -1157,7 +1184,14 @@ Working Docker setup               RDS SQL Server Express (Free Tier)
    - Open the new user → **Security credentials** tab → **Create access key** → **Command Line Interface (CLI)** → check the confirmation → next → **Create access key**.
    - **Copy both** the **Access key ID** and **Secret access key** into your password manager. You'll never see the secret again.
 
-3. Configure the CLI:
+3. Sign in to AWS as the IAM user (not root) before doing the AWS console steps in this section:
+
+  - Go to the IAM sign-in page (`https://<account-id-or-alias>.signin.aws.amazon.com/console`) **or** from the sign-in screen click **Sign in as IAM user**.
+  - Enter your account ID (or account alias), IAM username, and IAM password.
+  - Use the **root** user only for rare account-level tasks (billing, account recovery, root security changes), not for routine deployment work.
+  - If you did not enable console access when creating `eventsync-admin`, either re-create the user with console access or edit the user in IAM to enable console login.
+
+4. Configure the CLI:
 
    ```powershell
    aws configure
@@ -1169,7 +1203,7 @@ Working Docker setup               RDS SQL Server Express (Free Tier)
 
    ✅ Test: `aws sts get-caller-identity` should print your account ID and user ARN.
 
-4. Set environment variables for this terminal session:
+5. Set environment variables for this terminal session:
 
    ```powershell
    $REGION = "us-east-1"
@@ -1602,6 +1636,7 @@ git push
 - Login works; data persists across sessions.
 - A trivial commit to `main` triggers both green Actions runs.
 - $1 AWS Budget alert is configured.
+- End-of-day habit: if you are done testing, run `aws rds stop-db-instance --db-instance-identifier eventsync-db --region ap-southeast-1`.
 
 🎉 **AWS deployment done.**
 
@@ -1652,6 +1687,48 @@ If a secret leaks:
 ### 6.4 Updating the app
 
 Just push to `main`. The right CI/CD workflow picks up the change (Azure files trigger Azure workflows, AWS files trigger AWS workflows — paths filter handles this).
+
+### 6.5 AWS RDS tiny start/stop routine + weekly checklist
+
+Use this routine to avoid surprise RDS charges when you're not actively demoing or testing.
+
+#### Tiny start/stop routine (copy/paste)
+
+PowerShell:
+
+```powershell
+# Stop when done for the day (pauses DB compute charges)
+aws rds stop-db-instance --db-instance-identifier eventsync-db --region ap-southeast-1
+
+# Start before a demo/test session
+aws rds start-db-instance --db-instance-identifier eventsync-db --region ap-southeast-1
+
+# Quick status check
+aws rds describe-db-instances --db-instance-identifier eventsync-db --region ap-southeast-1 --query "DBInstances[0].DBInstanceStatus" --output text
+```
+
+Command Prompt (`cmd.exe`):
+
+```cmd
+:: Stop when done for the day (pauses DB compute charges)
+aws rds stop-db-instance --db-instance-identifier eventsync-db --region ap-southeast-1
+
+:: Start before a demo/test session
+aws rds start-db-instance --db-instance-identifier eventsync-db --region ap-southeast-1
+
+:: Quick status check
+aws rds describe-db-instances --db-instance-identifier eventsync-db --region ap-southeast-1 --query "DBInstances[0].DBInstanceStatus" --output text
+```
+
+> ⚠ RDS can auto-start after about 7 days in `stopped` state. If you're trying to stay near $0, check it weekly and stop it again if needed.
+
+#### Weekly checklist (5 minutes)
+
+1. Billing console → Cost Explorer → filter Service = **RDS** → confirm no unexpected spikes this week.
+2. Billing console → Bills → open **Relational Database Service** → verify line items are expected (instance-hours, storage, backup, CPU credits).
+3. RDS console → `eventsync-db` → verify status is `stopped` when you are not actively using it.
+4. Budgets console → confirm your `$1` monthly alert is still configured and email notifications are enabled.
+5. If the DB was auto-started or left running, stop it with the command above.
 
 ---
 
