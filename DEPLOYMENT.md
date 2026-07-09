@@ -595,6 +595,23 @@ export const environment = {
 
 > ⚠ **Security trade-off.** `localStorage` is readable by any JS on the same origin, so an XSS bug could leak the token. Your app's strict CSP, Angular's HTML sanitization, and no third-party scripts mitigate this — it's the standard Auth0 SPA recommendation when there's no same-origin BFF.
 
+#### 3.4.3 SPA routing fallback for cloud deployments
+
+Create `client/public/staticwebapp.config.json`. This file tells Azure Static Web Apps (and can be adapted for other cloud hosts) to serve `index.html` for any SPA URL that doesn't match a real asset. This ensures client-side routing works after page refresh.
+
+```json
+{
+  "navigationFallback": {
+    "rewrite": "/index.html",
+    "exclude": ["/api/*", "/assets/*", "*.{css,js,svg,png,jpg,ico,woff2}"]
+  }
+}
+```
+
+By placing this in `client/public/`, it is automatically included in the build output (the `public/**/*` glob in `angular.json` copies all files from the public folder to the final bundle). No separate `angular.json` configuration needed.
+
+> 💡 **Why public/?** The `public/` folder is for static assets that must be copied verbatim to the distribution. This configuration file travels with your logo images and other assets, ensuring it's always deployed together.
+
 ### 3.5 Run it
 
 ```powershell
@@ -636,6 +653,7 @@ docker compose restart api      # restart just the api after a code change
 | Image was visible, then disappeared after rebuild | API container's `/app/wwwroot/uploads` is ephemeral. | Confirm the `uploads:/app/wwwroot/uploads` volume mount and the `uploads:` entry under top-level `volumes:` in `docker-compose.yml` (File 7). Re-upload the image. |
 | Every page refresh forces you to sign in again | `environment.prod.ts` is missing `cacheLocation: 'localstorage'` and `useRefreshTokens: true`, so the SDK keeps tokens in memory only. | Apply Section 3.4.2, then **rebuild** the web image: `docker compose up -d --build web`. Hard-refresh the browser (Ctrl+Shift+R). |
 | SPA loads but login fails | Auth0 callback URL doesn't include `http://localhost` | Auth0 dashboard → Applications → your SPA → add `http://localhost, http://localhost/auth/callback` to **Allowed Callback URLs**, `http://localhost` to **Allowed Logout URLs** and **Allowed Web Origins**. Save. |
+| SPA page refresh returns 404 | `client/public/staticwebapp.config.json` missing or not included in build output. | Verify the file exists at `client/public/staticwebapp.config.json` (Section 3.4.3) and is present in `dist/client/browser/` after build. Rebuild: `cd client && npm run build`. For Docker, the file is already included by Nginx fallback (File 5), so this is cloud-only. |
 
 ### ✅ Stop & verify
 
@@ -917,24 +935,19 @@ Wait 2–3 minutes. ✅ Visit `https://eventsync-api-<suffix>.azurewebsites.net/
 
 #### A.3.2 SPA → Static Web Apps
 
-The SPA needs to call your API via the SWA's built-in routing. Create `client/staticwebapp.config.json`:
+The SPA's `client/public/staticwebapp.config.json` (created in Section 3.4.3) is automatically included in the Angular build output. Verify it's in your deployed bundle by checking that `dist/client/browser/staticwebapp.config.json` exists after running:
 
-```json
-{
-  "navigationFallback": {
-    "rewrite": "/index.html",
-    "exclude": ["/api/*", "/assets/*", "*.{css,js,svg,png,jpg,ico,woff2}"]
-  },
-  "routes": [
-    {
-      "route": "/api/*",
-      "rewrite": "https://eventsync-api-REPLACE_ME.azurewebsites.net/api/{*}"
-    }
-  ]
-}
+```powershell
+cd client
+npm ci
+npm run build -- --configuration=production
 ```
 
-Replace `eventsync-api-REPLACE_ME` with your actual App Service name.
+✅ Confirm the file is present in the build output:
+
+```powershell
+Test-Path "dist/client/browser/staticwebapp.config.json"   # should return True
+```
 
 Build and deploy:
 
@@ -1688,6 +1701,40 @@ If a secret leaks:
 
 Just push to `main`. The right CI/CD workflow picks up the change (Azure files trigger Azure workflows, AWS files trigger AWS workflows — paths filter handles this).
 
+### 6.4 Managing database changes with EF Core migrations
+
+**When do I need a migration?**
+
+| Change Type | Migration Needed? | Example |
+|------------|---|---|
+| **Database schema** (add/remove/modify columns, tables, relationships) | ✅ YES | Add `UserID` column to `Event` table |
+| **Seed data** (add/update data in `HasData()`) | ✅ YES | Add 11 new event types to `EventTypes` lookup |
+| **Code-only changes** (UI, business logic, API endpoints) | ❌ NO | Fix a bug in the events controller |
+| **Configuration changes** | ❌ NO | Update Auth0 domain in appsettings |
+
+**Workflow when you make database changes:**
+
+1. Edit `server/EventSync.Api/Data/AppDbContext.cs` (schema or seed data).
+2. Compile to verify no syntax errors: `dotnet build server/EventSync.Api/EventSync.Api.csproj`.
+3. Create a migration **with `--no-build` flag omitted** (fresh compile required):
+   ```powershell
+   cd server/EventSync.Api
+   dotnet ef migrations add DescriptiveNameHere
+   ```
+4. Review the generated file in `Migrations/` — it should reflect your changes.
+5. Commit everything (including the new migration file):
+   ```powershell
+   git add server/EventSync.Api/Migrations/
+   git commit -m "Add migration for [what changed]"
+   git push
+   ```
+6. GitHub Actions deploys and the migration runs automatically on the cloud (thanks to the auto-migration block in `Program.cs` Section 3.4.1).
+
+> ⚠ **EF Core gotchas:**
+> - **Never use `--no-build`** after adding a migration — the new class must be compiled or EF won't see it ("No migrations found in assembly").
+> - **Never use `migrations remove --force`** unless you're certain — it reverts the migration from the DB first, which can drop tables if it's your only migration.
+> - **Regenerate migrations if the model snapshot gets out of sync** — run a fresh `dotnet build` first, then `dotnet ef migrations add` again on the changed model.
+
 ### 6.5 AWS RDS tiny start/stop routine + weekly checklist
 
 Use this routine to avoid surprise RDS charges when you're not actively demoing or testing.
@@ -1761,6 +1808,9 @@ aws rds describe-db-instances --db-instance-identifier eventsync-db --region ap-
 | **CI/CD** | Continuous Integration / Continuous Deployment — automated build + deploy on every commit. |
 | **Runner** | The machine that executes a GitHub Actions workflow. |
 | **JWT** | JSON Web Token. The login token Auth0 issues. |
+| **EF Core Migration** | A C# file that describes a schema change (add/remove columns, tables, etc.) or seed data update. Applied to the DB in sequence. |
+| **Seed data** | Initial data inserted by `HasData()` in an EF Core migration. Lookup tables like `EventTypes` are commonly seeded. |
+| **staticwebapp.config.json** | Azure Static Web Apps routing config. Resides in `client/public/` so it travels with the SPA build. Tells the cloud to serve `index.html` for unknown routes (SPA fallback). |
 
 ### Docker cheat sheet
 
@@ -1813,6 +1863,15 @@ API returns 500
 ├── Azure         → App Service → Log stream
 └── AWS           → Elastic Beanstalk → environment → Logs
     → look for stack trace. Common: DB connection refused (security group, password, server name).
+    → **After code changes:** check if migrations applied. Look for "No migrations found in assembly" (build issue) or "ALTER TABLE" errors (schema mismatch).
+
+Database issues after deploying new DbContext changes
+├── Error: "No migrations found in assembly"
+│   → You edited AppDbContext.cs, pushed the code, but the migration file doesn't exist in the repo.
+│   → FIX: Generate locally (`dotnet ef migrations add Name`), commit the Migrations/ folder, push again.
+└── Error: "Invalid column name" or schema mismatch errors
+    → Migration exists but database schema doesn't match code.
+    → FIX: Check cloud logs that `MigrateAsync()` ran successfully. If it failed, check DB connection string + server firewall rules. Re-run the cloud deployment.
 
 Login fails (Auth0)
 ├── Browser dev tools → Network → /authorize request
