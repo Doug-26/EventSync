@@ -1104,7 +1104,8 @@ Go to GitHub → **Actions** tab → watch both workflows turn green. ✅
 | **View API logs** | App Service → **Monitoring** → **Log stream**. |
 | **View SPA build logs** | GitHub → **Actions** → click the run. |
 | **Rollback the API** | App Service → **Deployment** → **Deployment slots** (or push the previous commit). |
-| **Wipe everything to save cost** | `az group delete --name eventsync-rg --yes --no-wait` — deletes every resource in the group. |
+| **Make a code change go live** | Push to `main` → GitHub Actions auto-deploys (keep the resource group — do NOT delete). |
+| **⚠️ Delete everything permanently** | `az group delete --name eventsync-rg --yes --no-wait` — **Deletes every resource in the group.** Only do this if you're completely done with the project and want to stop all charges. |
 | **Set a budget alert** | Top search → **Cost Management + Billing** → **Budgets** → **+ Add** → $5 monthly alert at 80%. |
 
 #### $0 cost verification checklist
