@@ -65,6 +65,7 @@ export class LoginComponent {
   private readonly auth = inject(AuthService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  private sessionCheckStarted = false;
 
   /** True while Auth0 SDK boots or while we're redirecting. */
   protected readonly isBusy = computed(() => this.auth.isLoading());
@@ -72,10 +73,19 @@ export class LoginComponent {
   constructor() {
     // Redirect away from /login if the user already has a session.
     effect(() => {
-      if (!this.auth.isLoading() && this.auth.isAuthenticated()) {
-        const target = this.route.snapshot.queryParamMap.get('returnUrl') ?? '/dashboard';
-        this.router.navigateByUrl(target);
+      if (this.auth.isLoading() || !this.auth.isAuthenticated() || this.sessionCheckStarted) {
+        return;
       }
+
+      this.sessionCheckStarted = true;
+      const target = this.route.snapshot.queryParamMap.get('returnUrl') ?? '/dashboard';
+
+      void this.auth.hasUsableSession().then((hasUsableSession) => {
+        this.sessionCheckStarted = false;
+        if (hasUsableSession) {
+          this.router.navigateByUrl(target);
+        }
+      });
     });
   }
 

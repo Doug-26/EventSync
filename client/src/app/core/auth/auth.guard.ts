@@ -2,7 +2,9 @@
 import { inject } from '@angular/core';
 import { CanActivateFn, Router, UrlTree } from '@angular/router';
 import { AuthService as Auth0Service } from '@auth0/auth0-angular';
-import { Observable, combineLatest, filter, map, take } from 'rxjs';
+import { Observable, combineLatest, filter, from, map, switchMap, take } from 'rxjs';
+
+import { AuthService } from './auth.service';
 
 /**
  * Functional route guard that requires an authenticated Auth0 session.
@@ -23,17 +25,28 @@ import { Observable, combineLatest, filter, map, take } from 'rxjs';
  */
 export const authGuard: CanActivateFn = (_route, state): Observable<boolean | UrlTree> => {
   const auth0 = inject(Auth0Service);
+  const auth = inject(AuthService);
   const router = inject(Router);
 
   return combineLatest([auth0.isLoading$, auth0.isAuthenticated$]).pipe(
     // Block the navigation until the SDK has finished bootstrapping.
     filter(([isLoading]) => !isLoading),
     take(1),
-    map(([, isAuthenticated]) =>
-      isAuthenticated
-        ? true
-        : router.createUrlTree(['/login'], { queryParams: { returnUrl: state.url } }),
-    ),
+    switchMap(([, isAuthenticated]) => {
+      if (!isAuthenticated) {
+        return from([
+          router.createUrlTree(['/login'], { queryParams: { returnUrl: state.url } }),
+        ]);
+      }
+
+      return from(auth.hasUsableSession()).pipe(
+        map((hasUsableSession) =>
+          hasUsableSession
+            ? true
+            : router.createUrlTree(['/login'], { queryParams: { returnUrl: state.url } }),
+        ),
+      );
+    }),
   );
 };
 

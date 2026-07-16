@@ -595,6 +595,8 @@ export const environment = {
 
 > ⚠ **Security trade-off.** `localStorage` is readable by any JS on the same origin, so an XSS bug could leak the token. Your app's strict CSP, Angular's HTML sanitization, and no third-party scripts mitigate this — it's the standard Auth0 SPA recommendation when there's no same-origin BFF.
 
+> ℹ️ **Long-idle browser sessions can still go stale.** After days or weeks away, the browser may still show the user as signed in while Auth0 can no longer mint a usable access token from the cached session. A good client-side defense is to verify token retrieval before entering protected routes or auto-redirecting away from `/login`. Common symptom: the normal browser profile shows dashboard/API errors, but a private/incognito window works immediately.
+
 #### 3.4.3 SPA routing fallback for cloud deployments
 
 Create `client/public/staticwebapp.config.json`. This file tells Azure Static Web Apps (and can be adapted for other cloud hosts) to serve `index.html` for any SPA URL that doesn't match a real asset. This ensures client-side routing works after page refresh.
@@ -652,6 +654,7 @@ docker compose restart api      # restart just the api after a code change
 | Uploaded event image returns **404** at `/uploads/...` | Reverse proxy has no `/uploads/` route, so the request falls through to the SPA container. | Confirm `proxy/nginx.conf` (File 6) includes the `location /uploads/ { proxy_pass http://api_upstream; }` block, then `docker compose restart proxy`. |
 | Image was visible, then disappeared after rebuild | API container's `/app/wwwroot/uploads` is ephemeral. | Confirm the `uploads:/app/wwwroot/uploads` volume mount and the `uploads:` entry under top-level `volumes:` in `docker-compose.yml` (File 7). Re-upload the image. |
 | Every page refresh forces you to sign in again | `environment.prod.ts` is missing `cacheLocation: 'localstorage'` and `useRefreshTokens: true`, so the SDK keeps tokens in memory only. | Apply Section 3.4.2, then **rebuild** the web image: `docker compose up -d --build web`. Hard-refresh the browser (Ctrl+Shift+R). |
+| Normal browser fails after long inactivity, but incognito works | The browser kept stale Auth0/local site state. The UI still looks signed in, but silent token renewal can no longer produce a valid access token. | Sign out, clear site data for the SPA URL and Auth0 tenant, reload, then sign in again. Keep the client-side check that verifies a **usable** session before entering protected routes. |
 | SPA loads but login fails | Auth0 callback URL doesn't include `http://localhost` | Auth0 dashboard → Applications → your SPA → add `http://localhost, http://localhost/auth/callback` to **Allowed Callback URLs**, `http://localhost` to **Allowed Logout URLs** and **Allowed Web Origins**. Save. |
 | SPA page refresh returns 404 | `client/public/staticwebapp.config.json` missing or not included in build output. | Verify the file exists at `client/public/staticwebapp.config.json` (Section 3.4.3) and is present in `dist/client/browser/` after build. Rebuild: `cd client && npm run build`. For Docker, the file is already included by Nginx fallback (File 5), so this is cloud-only. |
 
@@ -1702,7 +1705,35 @@ If a secret leaks:
 
 Just push to `main`. The right CI/CD workflow picks up the change (Azure files trigger Azure workflows, AWS files trigger AWS workflows — paths filter handles this).
 
-### 6.4 Managing database changes with EF Core migrations
+### 6.5 Recovering from stale browser sessions
+
+If the live app suddenly shows dashboard/API errors after the site has been idle for days, but the same account works in a private/incognito window, the problem is usually **stale browser session data**, not a broken deployment.
+
+Typical symptoms:
+
+- The app opens and still shows your name/avatar.
+- Protected API calls fail from the normal browser profile.
+- Private/incognito mode works immediately after login.
+
+Recovery steps:
+
+1. Try a normal sign-out and sign back in.
+2. If that fails, clear site data for both the SPA URL and the Auth0 tenant domain.
+3. Hard-refresh the page and sign in again.
+
+Why this happens:
+
+- Auth0 session data is intentionally persisted in browser storage so refreshes do not force a re-login.
+- After a long idle period, the browser can keep cached sign-in state even when Auth0 can no longer silently issue a valid access token.
+- The Angular client should verify that it can obtain a **usable access token** before treating the cached session as valid.
+
+Recommended client-side behavior:
+
+- Before entering protected routes, confirm silent token retrieval succeeds.
+- On the `/login` page, do not auto-redirect to `/dashboard` only because `isAuthenticated === true`; first verify a token can still be obtained.
+- If silent token retrieval fails, clear the local Auth0 SDK state and force a fresh interactive login.
+
+### 6.6 Managing database changes with EF Core migrations
 
 **When do I need a migration?**
 
@@ -1736,7 +1767,7 @@ Just push to `main`. The right CI/CD workflow picks up the change (Azure files t
 > - **Never use `migrations remove --force`** unless you're certain — it reverts the migration from the DB first, which can drop tables if it's your only migration.
 > - **Regenerate migrations if the model snapshot gets out of sync** — run a fresh `dotnet build` first, then `dotnet ef migrations add` again on the changed model.
 
-### 6.5 AWS RDS tiny start/stop routine + weekly checklist
+### 6.7 AWS RDS tiny start/stop routine + weekly checklist
 
 Use this routine to avoid surprise RDS charges when you're not actively demoing or testing.
 
@@ -1878,6 +1909,9 @@ Login fails (Auth0)
 ├── Browser dev tools → Network → /authorize request
 │   ├── "callback url mismatch" → add the URL to Auth0 SPA settings
 │   └── "invalid audience"      → API env var Auth0__Audience wrong
+├── Normal browser fails, but incognito works
+│   → Stale browser session/local storage. The app cached a sign-in state but cannot silently renew a valid access token anymore.
+│   → FIX: clear site data for the SPA origin + Auth0 origin, reload, and sign in again. Keep the client-side usable-session check in place.
 └── After redirect → /auth/callback returns 404
     → SPA routing fallback missing. Check CloudFront error responses (B.2.6) or SWA navigationFallback (A.3.2).
 ```

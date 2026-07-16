@@ -90,4 +90,23 @@ export class AuthService {
   getAccessToken$(): Observable<string> {
     return this.auth0.getAccessTokenSilently();
   }
+
+  /**
+   * Returns true only when the cached Auth0 session can still produce a usable
+   * access token. When silent renewal fails, clear the local SDK state so the
+   * app can send the user back through an interactive login cleanly.
+   */
+  async hasUsableSession(): Promise<boolean> {
+    try
+    {
+      await this.getAccessToken();
+      return true;
+    }
+    catch (err)
+    {
+      console.warn('[Auth] Cached session is no longer usable.', err);
+      this.logoutLocal();
+      return false;
+    }
+  }
 }
