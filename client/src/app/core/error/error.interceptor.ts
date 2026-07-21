@@ -2,7 +2,7 @@
 import { HttpErrorResponse, HttpInterceptorFn } from '@angular/common/http';
 import { inject } from '@angular/core';
 import { Router } from '@angular/router';
-import { catchError, throwError } from 'rxjs';
+import { catchError, retry, throwError, timer } from 'rxjs';
 
 import { ToastService } from '../../shared/services/toast.service';
 
@@ -34,6 +34,17 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
   const router = inject(Router);
 
   return next(req).pipe(
+    // Retry up to 3 times on status 0 (no connection) — handles Azure App
+    // Service cold starts where the backend needs a few seconds to wake up.
+    retry({
+      count: 3,
+      delay: (error, retryCount) => {
+        if (error instanceof HttpErrorResponse && error.status === 0) {
+          return timer(retryCount * 2000); // 2 s, 4 s, 6 s
+        }
+        return throwError(() => error);
+      },
+    }),
     catchError((error: unknown) => {
       if (!(error instanceof HttpErrorResponse)) {
         // Non-HTTP failure (rare): let it propagate to GlobalErrorHandler.
