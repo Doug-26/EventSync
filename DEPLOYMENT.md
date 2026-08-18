@@ -1687,6 +1687,7 @@ Never edit on both at once without pushing — you'll create merge conflicts.
 | API 500s | `docker compose logs api` | App Service → **Log stream** | Elastic Beanstalk → environment → **Logs** |
 | Login fails (Auth0) | Browser dev tools → Network tab → look at the `/authorize` request URL | same | same |
 | DB connection refused | `docker compose logs db` | App Service → Log stream → look for "connection timeout" | Elastic Beanstalk → Logs → look for "Network-related" errors. Check the security group rule in B.2.3. |
+| First API call after days idle fails with **status 0** (network abort) | n/a — Docker doesn't auto-pause | Free-tier cold start — see [6.8](#68-preventing-azure-free-tier-cold-starts-with-a-keep-alive-workflow) | Not applicable if using Beanstalk Always-On |
 
 ### 6.3 Rotate Auth0 credentials
 
@@ -1808,6 +1809,85 @@ aws rds describe-db-instances --db-instance-identifier eventsync-db --region ap-
 3. RDS console → `eventsync-db` → verify status is `stopped` when you are not actively using it.
 4. Budgets console → confirm your `$1` monthly alert is still configured and email notifications are enabled.
 5. If the DB was auto-started or left running, stop it with the command above.
+
+### 6.8 Preventing Azure free-tier cold starts with a keep-alive workflow
+
+Both the API (App Service **F1**) and the database (**Azure SQL Free Offer**) auto-pause after periods of inactivity to stay within the free quotas:
+
+- App Service **F1** idles after roughly **20 minutes** with no requests.
+- Azure SQL Free **auto-pauses** after **60 minutes** of no activity.
+
+The first request after a long idle window can take **30–60 seconds** while both tiers resume. To users this looks like a broken site — the browser sees an `HttpErrorResponse` with **status 0** (network abort) while Azure spins the instance back up.
+
+**Approach: scheduled GitHub Actions ping**
+
+A workflow (`.github/workflows/keep-alive.yml`) pings the API every 10 minutes, comfortably under both idle thresholds. Because GitHub cron is best-effort, occasional 10–15 minute gaps are expected and safe.
+
+Critically, the ping targets **`/health/ready`** (defined in `Program.cs`), not `/health`:
+
+- `/health` returns a static payload — keeps App Service warm but does **not** touch the DB.
+- `/health/ready` runs `AppDbContext.Database.CanConnectAsync()` — opens a real SQL connection so the DB stays warm too.
+
+The endpoint is public, cheap, and returns no user data. If the DB is unreachable it returns **503** rather than leaking driver details.
+
+**Ping strategy inside the workflow**
+
+Each scheduled run retries up to 4 times with 30 s backoff (max ~3 minutes). This matters because if the DB has *already* auto-paused when we ping, the very first `CanConnectAsync` triggers the resume and typically times out; the retry then succeeds against the warm instance. On failure the workflow logs a `::warning::` but exits `0` so a transient Azure blip doesn't spam notification emails.
+
+**Cost impact**
+
+| Resource | Consumption | Free-tier budget |
+|---|---|---|
+| GitHub Actions minutes | ~10 s × 144 runs/day ≈ 24 min/day | 2,000 min/month private (public repo = unlimited) |
+| Azure SQL vCore-seconds | ~1 s per ping × ~4,320 pings/month ≈ 4k s/month | 100,000 s/month |
+| Azure SQL storage / bandwidth | 0 — no data returned | — |
+
+A per-user cap of 3 events (see [6.9](#69-per-user-event-cap-portfolio-guardrail)) further limits any accidental cost drift.
+
+**Configuration**
+
+The API base URL is hard-coded in the workflow's `env: API_BASE_URL`. If the App Service is renamed, update that one line and commit.
+
+**Pausing the pings**
+
+Going on holiday and want the resources to fully idle again?
+
+- Quick pause: GitHub → **Actions** → **Keep API warm** → **⋯** → **Disable workflow**.
+- Full pause: comment out the `schedule:` block in `keep-alive.yml`.
+
+**How to tell a cold start from other failures**
+
+Even with the keep-alive in place, cold starts can still happen (workflow disabled, deploy just finished, cron delayed, etc.). If a user reports the site being slow to load:
+
+| Symptom | Likely cause | Where to look |
+|---|---|---|
+| First API call fails with **status 0**, then succeeds on refresh | Cold start slipped through the keep-alive | Actions → **Keep API warm** → check last successful run |
+| API call returns **401 Unauthorized** | Stale Auth0 session | See [6.5 Recovering from stale browser sessions](#65-recovering-from-stale-browser-sessions) |
+| API call returns **5xx** with a body | Genuine server error | App Service → **Log stream** |
+
+**Alternatives considered (and why not)**
+
+- **App Service Always-On** — requires B1 (~$13/month). Off the table for a free-tier portfolio.
+- **In-SPA cold-start UI** with retry/backoff — nice UX but only papers over the symptom; the user still waits 30–60 s on every long-idle visit. The keep-alive removes the wait entirely.
+- **Server-side warmup endpoint** — a warmup endpoint on its own doesn't help; *something* has to call it. Combining `/health/ready` with the scheduled workflow is exactly that pairing.
+
+### 6.9 Per-user event cap (portfolio guardrail)
+
+To keep storage, SQL usage, and cover-image upload bandwidth predictable on the free tier, each authenticated user is capped at a **maximum of 3 active events**.
+
+Where it lives:
+
+- `server/EventSync.Api/Features/Events/CreateEvent/CreateEvent.cs` → `CreateEventHandler.MaxEventsPerUser = 3`.
+- The handler counts non-deleted events owned by the current user before saving. If the cap is reached it throws a `FluentValidation.ValidationException`, which the global `ExceptionHandlingMiddleware` maps to **400 Bad Request** with a ProblemDetails body.
+- The Create Event page (`features/events/create-event/create-event.component.ts`) already renders `eventService.error()` in `submitError`, so the backend message *"You have reached the limit of 3 events. Delete an existing event before creating a new one."* surfaces to the user without extra UI work.
+
+Soft-deleted rows (`IsDeleted = true`) do **not** count against the cap, so deleting an event immediately frees a slot.
+
+To raise or remove the cap:
+
+1. Change `MaxEventsPerUser` in `CreateEvent.cs`.
+2. No migration is required — this is code-only.
+3. Redeploy via the normal GitHub Actions flow (`git push`).
 
 ---
 

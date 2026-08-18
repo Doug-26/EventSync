@@ -296,6 +296,28 @@ app.MapGet("/health", () => Results.Ok(new
 .WithTags("Diagnostics")
 .AllowAnonymous();
 
+// Readiness probe / keep-alive target. Opens a DB connection so scheduled pings
+// keep the Azure SQL Free tier from auto-pausing (App Service F1 is warmed by
+// the request itself). Kept intentionally cheap — no queries against user data.
+app.MapGet("/health/ready", async (AppDbContext db, CancellationToken ct) =>
+{
+    try
+    {
+        var canConnect = await db.Database.CanConnectAsync(ct);
+        return canConnect
+            ? Results.Ok(new { status = "ready", db = "up", timestamp = DateTime.UtcNow })
+            : Results.StatusCode(StatusCodes.Status503ServiceUnavailable);
+    }
+    catch
+    {
+        // Don't leak driver/exception details — 503 is enough for a probe.
+        return Results.StatusCode(StatusCodes.Status503ServiceUnavailable);
+    }
+})
+.WithName("ReadinessCheck")
+.WithTags("Diagnostics")
+.AllowAnonymous();
+
 // Feature endpoint groups.
 app.MapAuthEndpoints();
 app.MapEventEndpoints();

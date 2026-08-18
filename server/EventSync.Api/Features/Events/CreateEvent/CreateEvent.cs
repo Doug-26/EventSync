@@ -97,6 +97,12 @@ public sealed class CreateEventValidator : AbstractValidator<CreateEventCommand>
 /// <summary>Handler for <see cref="CreateEventCommand"/>.</summary>
 public sealed class CreateEventHandler : IRequestHandler<CreateEventCommand, EventDto>
 {
+    /// <summary>
+    /// Maximum number of active (non-deleted) events a single user may own.
+    /// Portfolio/demo cap to keep the Azure SQL Free Offer usage predictable.
+    /// </summary>
+    public const int MaxEventsPerUser = 3;
+
     private readonly ICurrentUserService _currentUser;
     private readonly AppDbContext _dbContext;
 
@@ -111,6 +117,20 @@ public sealed class CreateEventHandler : IRequestHandler<CreateEventCommand, Eve
     public async Task<EventDto> Handle(CreateEventCommand request, CancellationToken cancellationToken)
     {
         var user = await _currentUser.GetOrCreateUserAsync(cancellationToken);
+
+        // Enforce the per-user event cap before touching any other state.
+        // Counts only non-deleted rows so soft-deleted events free the slot.
+        var activeEventCount = await _dbContext.Events
+            .AsNoTracking()
+            .CountAsync(e => e.OrganizerId == user.Id && !e.IsDeleted, cancellationToken);
+
+        if (activeEventCount >= MaxEventsPerUser)
+        {
+            throw new ValidationException(
+                [new FluentValidation.Results.ValidationFailure(
+                    string.Empty,
+                    $"You have reached the limit of {MaxEventsPerUser} events. Delete an existing event before creating a new one.")]);
+        }
 
         // Verify the supplied EventTypeId references a real lookup row before saving —
         // EF will otherwise surface a less helpful FK constraint error.
