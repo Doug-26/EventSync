@@ -169,7 +169,27 @@ export class RsvpPageComponent {
       ?.querySelector<HTMLElement>(`[data-status-card="${next.value}"]`);
     target?.focus();
   }
-
+  /**
+   * Scrolls the focused field into view after the virtual keyboard has opened.
+   * A delay is needed because the keyboard shrinks the viewport asynchronously.
+   */
+  protected scrollFieldIntoView(event: FocusEvent): void {
+    const el = event.target as HTMLElement;
+    if (window.visualViewport) {
+      const onResize = () => {
+        window.visualViewport!.removeEventListener('resize', onResize);
+        setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50);
+      };
+      window.visualViewport.addEventListener('resize', onResize);
+      // Fallback: if the keyboard was already open, resize won't fire
+      setTimeout(() => {
+        window.visualViewport!.removeEventListener('resize', onResize);
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 400);
+    } else {
+      setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'center' }), 300);
+    }
+  }
   /** Submit handler \u2014 posts the RSVP and navigates to the confirmation page on success. */
   protected submit(): void {
     if (this.submitting() || this.form.invalid) {
