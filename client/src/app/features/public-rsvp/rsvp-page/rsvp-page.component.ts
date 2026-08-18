@@ -170,24 +170,25 @@ export class RsvpPageComponent {
     target?.focus();
   }
   /**
-   * Scrolls the focused field into view after the virtual keyboard has opened.
-   * A delay is needed because the keyboard shrinks the viewport asynchronously.
+   * Scrolls the focused field into view once the virtual keyboard has resized
+   * the viewport, so guests can see what they type on mobile.
    */
   protected scrollFieldIntoView(event: FocusEvent): void {
     const el = event.target as HTMLElement;
+    const scroll = () => el.scrollIntoView({ behavior: 'smooth', block: 'center' });
     if (window.visualViewport) {
       const onResize = () => {
         window.visualViewport!.removeEventListener('resize', onResize);
-        setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50);
+        scroll();
       };
       window.visualViewport.addEventListener('resize', onResize);
-      // Fallback: if the keyboard was already open, resize won't fire
+      // Fallback for when the keyboard is already open (no resize fires).
       setTimeout(() => {
         window.visualViewport!.removeEventListener('resize', onResize);
-        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }, 400);
+        scroll();
+      }, 350);
     } else {
-      setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'center' }), 300);
+      setTimeout(scroll, 300);
     }
   }
   /** Submit handler \u2014 posts the RSVP and navigates to the confirmation page on success. */
