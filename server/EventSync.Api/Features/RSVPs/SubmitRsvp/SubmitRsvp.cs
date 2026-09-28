@@ -100,6 +100,32 @@ public sealed class SubmitRsvpHandler : IRequestHandler<SubmitRsvpCommand, RsvpC
                     cancellationToken);
         }
 
+        // Capacity enforcement. Only a "Going" response consumes a seat — "Maybe"
+        // and "NotGoing" never count against MaxAttendees, and a null cap means the
+        // event is unlimited. When a guest is updating an existing RSVP we exclude
+        // their own row from the tally (via excludeId) so someone who is already
+        // Going can edit their name/note without being locked out of a full event.
+        //
+        // Note: this is a read-then-write check, not a database constraint, so under
+        // heavy concurrent load a full event could still be over-booked by a small
+        // margin. That trade-off is acceptable here; a hard guarantee would require
+        // a serializable transaction or a DB-level check.
+        if (request.Status == RsvpStatus.Going && link.Event.MaxAttendees is int maxAttendees)
+        {
+            var excludeId = existing?.Id ?? Guid.Empty;
+            var goingCount = await _dbContext.Rsvps
+                .CountAsync(
+                    r => r.EventId == link.EventId
+                         && r.Status == RsvpStatus.Going
+                         && r.Id != excludeId,
+                    cancellationToken);
+
+            if (goingCount >= maxAttendees)
+            {
+                throw new EventFullException(link.Event.Title);
+            }
+        }
+
         Rsvp rsvp;
         if (existing is not null)
         {

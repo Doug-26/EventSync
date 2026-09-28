@@ -79,6 +79,10 @@ public sealed class ExceptionHandlingMiddleware
                 StatusCodes.Status410Gone,
                 "Invite link unavailable",
                 iie.Message),
+            EventFullException efe => (
+                StatusCodes.Status409Conflict,
+                "Event is full",
+                efe.Message),
             _ => (
                 StatusCodes.Status500InternalServerError,
                 "Server error",

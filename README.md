@@ -118,6 +118,13 @@ npm install
 ng serve
 ```
 
+### Running Tests
+
+```bash
+# Backend unit tests (xUnit + EF Core InMemory) — includes RSVP capacity enforcement
+dotnet test
+```
+
 ### Auth0 Configuration
 
 1. Create a **Single-Page Application** in your Auth0 dashboard.
@@ -167,6 +174,7 @@ ng serve
 - **Public endpoints bypass the auth interceptor** — the Angular `authInterceptor` skips `/invite/` paths so guests never trigger a token renewal.
 - **RFC 7807 ProblemDetails everywhere** — a global exception middleware translates `ValidationException`, `NotFoundException`, `ForbiddenAccessException`, and `InvalidInviteException` into standardized `application/problem+json` payloads with a `traceId`. Stack traces are included only in Development.
 - **IP-partitioned rate limiting on the public RSVP endpoint** — fixed-window (5 requests / 10 minutes) using `System.Threading.RateLimiting`; rejections return `429` with a `Retry-After` header. Authenticated endpoints are intentionally unthrottled.
+- **Capacity enforcement on RSVP** — once an event reaches its `MaxAttendees`, a new `Going` response is rejected with `409 Conflict` (`EventFullException`). Only `Going` consumes a seat (`Maybe`/`NotGoing` never do), and re-submitting an existing `Going` RSVP never locks the guest out of a full event. The public invite page surfaces remaining spots and disables the "Going" option when full. The check is a read-then-write count, so it is not race-proof under heavy concurrency by design.
 - **Strict HTTP security headers** — dedicated middleware sets CSP (`script-src 'self'`, no inline JS), `X-Content-Type-Options`, `X-Frame-Options: DENY`, `Referrer-Policy`, `Permissions-Policy`, and HSTS (non-Development only). CORS reads `AllowedOrigins` from configuration — wildcards are never used.
 - **Accessibility-first frontend** — skip-to-main-content link, semantic landmarks, focus-trapped confirm dialog, `aria-live` toast region, and a dev-only `axe-core` scan that re-runs on every navigation so violations surface immediately in the console.
 

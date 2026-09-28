@@ -22,6 +22,13 @@ namespace EventSync.Api.Features.RSVPs.Common;
 /// <param name="OrganizerName">Organizer display name. Email is intentionally excluded.</param>
 /// <param name="CoverImageUrl">Optional cover image URL.</param>
 /// <param name="IsCancelled">True when the organizer cancelled the event.</param>
+/// <param name="MaxAttendees">Optional cap on "Going" RSVPs; <c>null</c> means unlimited.</param>
+/// <param name="SpotsRemaining">
+/// Remaining "Going" spots (<c>MaxAttendees</c> minus current Going count, floored at 0),
+/// or <c>null</c> when the event is uncapped. These are non-PII aggregate counts — safe to
+/// expose publicly so the invite page can show availability.
+/// </param>
+/// <param name="IsFull">True when a capped event has no remaining spots.</param>
 public sealed record PublicEventDto(
     string Title,
     string? Description,
@@ -32,7 +39,10 @@ public sealed record PublicEventDto(
     DateTime? EndDate,
     string OrganizerName,
     string? CoverImageUrl,
-    bool IsCancelled);
+    bool IsCancelled,
+    int? MaxAttendees,
+    int? SpotsRemaining,
+    bool IsFull);
 
 /// <summary>
 /// Read-model for an RSVP row in the organizer-side list.

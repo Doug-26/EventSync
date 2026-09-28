@@ -127,13 +127,52 @@ export class RsvpPageComponent {
     return `${apiOrigin}${url}`;
   });
 
+  /** The loaded event, or null while loading / on error. */
+  protected readonly event = computed<PublicEventDto | null>(() => {
+    const s = this.state();
+    return s.kind === 'ready' ? s.event : null;
+  });
+
+  /** True when a capped event has no remaining "Going" spots. */
+  protected readonly isFull = computed(() => this.event()?.isFull ?? false);
+
+  /** Remaining spots for a capped event, or null when uncapped. */
+  protected readonly spotsRemaining = computed(() => this.event()?.spotsRemaining ?? null);
+
+  /** The status option that should receive focus first (skips a disabled "Going"). */
+  protected readonly initialFocusValue = computed<RsvpStatus>(() => {
+    const firstEnabled = this.statusOptions.find((o) => !this.isOptionDisabled(o.value));
+    return firstEnabled?.value ?? this.statusOptions[0].value;
+  });
+
+  /** "Going" is disabled once a capped event is full; Maybe/NotGoing stay open. */
+  protected isOptionDisabled(value: RsvpStatus): boolean {
+    return value === RsvpStatus.Going && this.isFull();
+  }
+
   /** True when a status card should appear selected. */
   protected isSelected(value: RsvpStatus): boolean {
     return this.form.controls.status.value === value;
   }
 
-  /** Click/keyboard handler for the status cards. */
+  /**
+   * Click handler for a status card. The card is a `<label>` wrapping a native
+   * radio `<input>`, so a click on a disabled card would otherwise check the
+   * nested input via the browser's default label behaviour (bypassing
+   * `selectStatus`). Cancelling the default action keeps a disabled option (e.g.
+   * "Going" on a full event) from being selected.
+   */
+  protected onCardClick(event: MouseEvent, value: RsvpStatus): void {
+    if (this.isOptionDisabled(value)) {
+      event.preventDefault();
+      return;
+    }
+    this.selectStatus(value);
+  }
+
+  /** Selects a status (keyboard + programmatic). Ignores disabled options. */
   protected selectStatus(value: RsvpStatus): void {
+    if (this.isOptionDisabled(value)) return;
     this.form.controls.status.setValue(value);
     this.form.controls.status.markAsTouched();
   }
@@ -147,11 +186,11 @@ export class RsvpPageComponent {
     switch (event.key) {
       case 'ArrowRight':
       case 'ArrowDown':
-        nextIndex = (index + 1) % this.statusOptions.length;
+        nextIndex = this.nextEnabledIndex(index, 1);
         break;
       case 'ArrowLeft':
       case 'ArrowUp':
-        nextIndex = (index - 1 + this.statusOptions.length) % this.statusOptions.length;
+        nextIndex = this.nextEnabledIndex(index, -1);
         break;
       case ' ':
       case 'Enter':
@@ -161,13 +200,24 @@ export class RsvpPageComponent {
       default:
         return;
     }
-    if (nextIndex === null) return;
+    if (nextIndex === null || nextIndex === index) return;
     event.preventDefault();
     const next = this.statusOptions[nextIndex];
     this.selectStatus(next.value);
     const target = (event.currentTarget as HTMLElement).ownerDocument
       ?.querySelector<HTMLElement>(`[data-status-card="${next.value}"]`);
     target?.focus();
+  }
+
+  /** Finds the next selectable option index in the given direction, skipping disabled cards. */
+  private nextEnabledIndex(start: number, step: number): number {
+    const count = this.statusOptions.length;
+    let idx = start;
+    for (let i = 0; i < count; i++) {
+      idx = (idx + step + count) % count;
+      if (!this.isOptionDisabled(this.statusOptions[idx].value)) return idx;
+    }
+    return start;
   }
   /**
    * Scrolls the focused field into view once the virtual keyboard has resized
@@ -287,6 +337,15 @@ export class RsvpPageComponent {
       }
       if (err.status === 429) {
         return 'Too many submissions. Please wait a moment and try again.';
+      }
+      if (err.status === 409) {
+        // Event filled up between page load and submission (RFC 7807 ProblemDetails).
+        const body = err.error as { detail?: string; message?: string } | null;
+        return (
+          body?.detail ??
+          body?.message ??
+          'This event is now full and can no longer accept "Going" responses.'
+        );
       }
       if (err.status === 400) {
         return 'Please review the form and try again.';

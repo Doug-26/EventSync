@@ -32,6 +32,12 @@ export interface PublicEventDto {
   readonly organizerName: string;
   readonly coverImageUrl: string | null;
   readonly isCancelled: boolean;
+  /** Attendee cap on "Going" RSVPs; `null` means unlimited. */
+  readonly maxAttendees: number | null;
+  /** Remaining "Going" spots (floored at 0), or `null` when uncapped. */
+  readonly spotsRemaining: number | null;
+  /** True when a capped event has no remaining spots. */
+  readonly isFull: boolean;
 }
 
 /** Body for `POST /invite/{token}/rsvp`. */
