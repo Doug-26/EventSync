@@ -34,17 +34,22 @@ internal static class TestData
     /// <param name="maxAttendees">Capacity cap; <c>null</c> means unlimited.</param>
     /// <param name="goingCount">Number of anonymous "Going" RSVPs to pre-seed.</param>
     /// <param name="isCancelled">Whether the event is cancelled.</param>
+    /// <param name="organizerAuth0Id">
+    /// When set, the organizer is created with this Auth0 subject id (so an
+    /// authenticated integration test can act as the owner); otherwise a random one.
+    /// </param>
     /// <returns>The generated invite token and the event id.</returns>
     public static (string Token, Guid EventId) SeedEvent(
         AppDbContext context,
         int? maxAttendees,
         int goingCount = 0,
-        bool isCancelled = false)
+        bool isCancelled = false,
+        string? organizerAuth0Id = null)
     {
         var organizer = new User
         {
             Id = Guid.NewGuid(),
-            Auth0Id = $"auth0|{Guid.NewGuid():N}",
+            Auth0Id = organizerAuth0Id ?? $"auth0|{Guid.NewGuid():N}",
             Email = "organizer@test.local",
             DisplayName = "Test Organizer",
             CreatedAt = DateTime.UtcNow,

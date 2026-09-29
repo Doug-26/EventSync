@@ -66,6 +66,10 @@ export class RsvpListComponent {
   protected readonly loading = signal<boolean>(true);
   protected readonly errorMessage = signal<string | null>(null);
 
+  /** CSV export state (independent of the list's own loading/error). */
+  protected readonly exporting = signal<boolean>(false);
+  protected readonly exportError = signal<string | null>(null);
+
   protected readonly result = signal<PagedResult<RsvpDto> | null>(null);
 
   /** Tabs derived from the selected-event RSVP summary. */
@@ -83,6 +87,11 @@ export class RsvpListComponent {
 
   protected readonly isEmpty = computed(
     () => !this.loading() && !this.errorMessage() && !this.hasResults(),
+  );
+
+  /** Only offer export once the event has at least one response. */
+  protected readonly canExport = computed(
+    () => (this.eventService.selectedEvent()?.rsvps.total ?? 0) > 0,
   );
 
   // eslint-disable-next-line @typescript-eslint/no-unused-private-class-members
@@ -112,6 +121,50 @@ export class RsvpListComponent {
       },
     });
   });
+
+  /** Downloads all RSVPs for the event as a CSV file. */
+  protected exportCsv(): void {
+    if (this.exporting()) return;
+    this.exporting.set(true);
+    this.exportError.set(null);
+
+    this.rsvpService.exportRsvps(this.eventId()).subscribe({
+      next: (blob) => {
+        this.exporting.set(false);
+        this.downloadBlob(blob, this.buildExportFileName());
+      },
+      error: () => {
+        this.exporting.set(false);
+        this.exportError.set('Could not export RSVPs. Please try again.');
+      },
+    });
+  }
+
+  /** Triggers a browser download of a blob under the given file name. */
+  private downloadBlob(blob: Blob, fileName: string): void {
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = fileName;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  /** Builds a readable CSV file name from the event title (matches the server's scheme). */
+  private buildExportFileName(): string {
+    const title = this.eventService.selectedEvent()?.title ?? 'event';
+    const slug =
+      title
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '')
+        .slice(0, 40)
+        .replace(/-+$/g, '') || 'event';
+    const date = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    return `rsvps-${slug}-${date}.csv`;
+  }
 
   /** Switch the active filter tab and reset to page 1. */
   protected selectFilter(value: StatusFilter): void {

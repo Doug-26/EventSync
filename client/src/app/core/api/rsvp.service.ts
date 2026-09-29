@@ -96,6 +96,21 @@ export class RsvpService {
     ).pipe(tap((result) => this.summary.set(result)));
   }
 
+  /**
+   * GET /events/{eventId}/rsvps/export — downloads all RSVPs as a CSV blob.
+   *
+   * Kept out of the shared `run()` wrapper so it doesn't toggle the list's
+   * `loading`/`error` signals; the caller manages its own export state and
+   * names the downloaded file client-side (avoids needing Content-Disposition
+   * exposed through CORS).
+   */
+  exportRsvps(eventId: string): Observable<Blob> {
+    return this.http.get(
+      `${this.eventsUrl}/${encodeURIComponent(eventId)}/rsvps/export`,
+      { responseType: 'blob' },
+    );
+  }
+
   /** Wraps an HTTP observable with shared `loading` / `error` signal updates. */
   private run<T>(source: Observable<T>): Observable<T> {
     this.loading.set(true);

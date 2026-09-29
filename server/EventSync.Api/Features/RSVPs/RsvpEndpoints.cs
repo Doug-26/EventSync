@@ -4,11 +4,13 @@ using EventSync.Api.Common.Models;
 using EventSync.Api.Data.Entities;
 using EventSync.Api.Features.Events.Common;
 using EventSync.Api.Features.RSVPs.Common;
+using EventSync.Api.Features.RSVPs.ExportRsvps;
 using EventSync.Api.Features.RSVPs.GetPublicEvent;
 using EventSync.Api.Features.RSVPs.GetRsvps;
 using EventSync.Api.Features.RSVPs.GetRsvpSummary;
 using EventSync.Api.Features.RSVPs.SubmitRsvp;
 using MediatR;
+using System.Text;
 
 namespace EventSync.Api.Features.RSVPs;
 
@@ -96,6 +98,37 @@ public static class RsvpEndpoints
         .WithName("GetRsvpSummary")
         .WithSummary("Aggregate RSVP counts for an event you organize.")
         .Produces<RsvpSummaryDto>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden)
+        .Produces(StatusCodes.Status404NotFound);
+
+        group.MapGet("/export", async (Guid eventId, IMediator mediator, CancellationToken ct) =>
+        {
+            try
+            {
+                var export = await mediator.Send(new ExportRsvpsQuery(eventId), ct);
+
+                // Prepend a UTF-8 BOM so Excel opens non-ASCII names/notes correctly.
+                var preamble = Encoding.UTF8.GetPreamble();
+                var body = Encoding.UTF8.GetBytes(export.Csv);
+                var bytes = new byte[preamble.Length + body.Length];
+                Buffer.BlockCopy(preamble, 0, bytes, 0, preamble.Length);
+                Buffer.BlockCopy(body, 0, bytes, preamble.Length, body.Length);
+
+                return Results.File(bytes, "text/csv", export.FileName);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return Results.Forbid();
+            }
+        })
+        .WithName("ExportRsvps")
+        .WithSummary("Download all RSVPs for an event you organize as a CSV file.")
+        .Produces(StatusCodes.Status200OK, contentType: "text/csv")
         .Produces(StatusCodes.Status401Unauthorized)
         .Produces(StatusCodes.Status403Forbidden)
         .Produces(StatusCodes.Status404NotFound);

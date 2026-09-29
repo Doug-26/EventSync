@@ -154,6 +154,7 @@ dotnet test
 | DELETE | `/api/v1/invite-links/{id}` | Deactivate invite link |
 | GET | `/api/v1/events/{id}/rsvps` | Paginated RSVP list |
 | GET | `/api/v1/events/{id}/rsvps/summary` | RSVP counts |
+| GET | `/api/v1/events/{id}/rsvps/export` | Download all RSVPs as a CSV file |
 | GET | `/api/v1/event-types` | Event type lookups |
 | POST | `/api/v1/uploads/images` | Upload cover image |
 
@@ -176,6 +177,7 @@ dotnet test
 - **RFC 7807 ProblemDetails everywhere** — a global exception middleware translates `ValidationException`, `NotFoundException`, `ForbiddenAccessException`, and `InvalidInviteException` into standardized `application/problem+json` payloads with a `traceId`. Stack traces are included only in Development.
 - **IP-partitioned rate limiting on the public RSVP endpoint** — fixed-window (5 requests / 10 minutes) using `System.Threading.RateLimiting`; rejections return `429` with a `Retry-After` header. Authenticated endpoints are intentionally unthrottled.
 - **Capacity enforcement on RSVP** — once an event reaches its `MaxAttendees`, a new `Going` response is rejected with `409 Conflict` (`EventFullException`). Only `Going` consumes a seat (`Maybe`/`NotGoing` never do), and re-submitting an existing `Going` RSVP never locks the guest out of a full event. The public invite page surfaces remaining spots and disables the "Going" option when full. The check is a read-then-write count, so it is not race-proof under heavy concurrency by design.
+- **CSV export hardening** — the organizer RSVP export streams `text/csv` (UTF-8 BOM for Excel) with RFC 4180 quoting and a CSV-injection guard: guest-supplied values beginning with `=`, `+`, `-`, or `@` are prefixed with a single quote so spreadsheet apps don't execute them as formulas.
 - **Strict HTTP security headers** — dedicated middleware sets CSP (`script-src 'self'`, no inline JS), `X-Content-Type-Options`, `X-Frame-Options: DENY`, `Referrer-Policy`, `Permissions-Policy`, and HSTS (non-Development only). CORS reads `AllowedOrigins` from configuration — wildcards are never used.
 - **Accessibility-first frontend** — skip-to-main-content link, semantic landmarks, focus-trapped confirm dialog, `aria-live` toast region, and a dev-only `axe-core` scan that re-runs on every navigation so violations surface immediately in the console.
 
