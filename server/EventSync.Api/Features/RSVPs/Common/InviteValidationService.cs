@@ -81,6 +81,8 @@ public sealed class InviteValidationService : IInviteValidationService
             return (null, "This invite link has been deactivated");
         }
 
+        // ExpiresAt is a user-entered value; compared against server-local DateTime.Now
+        // (NOT UtcNow, unlike the audit timestamps) pending timezone-aware handling.
         if (link.ExpiresAt is DateTime expiry && expiry < DateTime.Now)
         {
             return (null, "This invite link has expired");

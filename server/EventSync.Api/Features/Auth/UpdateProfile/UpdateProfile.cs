@@ -65,7 +65,7 @@ public sealed class UpdateProfileHandler : IRequestHandler<UpdateProfileCommand,
 
         user.DisplayName = request.DisplayName.Trim();
         user.AvatarUrl = string.IsNullOrWhiteSpace(request.AvatarUrl) ? null : request.AvatarUrl.Trim();
-        user.UpdatedAt = DateTime.Now;
+        user.UpdatedAt = DateTime.UtcNow;
 
         await _dbContext.SaveChangesAsync(cancellationToken);
 

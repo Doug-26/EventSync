@@ -44,7 +44,7 @@ public sealed class DeleteEventHandler : IRequestHandler<DeleteEventCommand, Uni
         // Soft-delete: preserves audit history and cascades naturally via the
         // global query filter on dependent reads.
         entity.IsDeleted = true;
-        entity.UpdatedAt = DateTime.Now;
+        entity.UpdatedAt = DateTime.UtcNow;
 
         await _dbContext.SaveChangesAsync(cancellationToken);
         return Unit.Value;

@@ -43,6 +43,9 @@ public sealed class CreateEventValidator : AbstractValidator<CreateEventCommand>
             .MaximumLength(1024)
             .When(x => !string.IsNullOrWhiteSpace(x.MeetingUrl));
 
+        // StartDate arrives as a user-entered, zone-less wall-clock value, so it is
+        // compared against server-local DateTime.Now (NOT UtcNow, unlike the audit
+        // timestamps). Timezone-aware handling is a separate, future change.
         RuleFor(x => x.StartDate)
             .GreaterThan(_ => DateTime.Now)
                 .WithMessage("StartDate must be in the future.");
@@ -142,7 +145,7 @@ public sealed class CreateEventHandler : IRequestHandler<CreateEventCommand, Eve
                     nameof(request.EventTypeId),
                     $"EventTypeId {request.EventTypeId} does not exist.")]);
 
-        var now = DateTime.Now;
+        var now = DateTime.UtcNow;
         var entity = new Event
         {
             Id = Guid.NewGuid(),

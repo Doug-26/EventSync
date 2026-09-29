@@ -89,7 +89,7 @@ public sealed class SubmitRsvpHandler : IRequestHandler<SubmitRsvpCommand, RsvpC
             .Include(l => l.Event)
             .FirstAsync(l => l.Id == validatedLink.Id, cancellationToken);
 
-        var now = DateTime.Now;
+        var now = DateTime.UtcNow;
         Rsvp? existing = null;
 
         if (!string.IsNullOrWhiteSpace(request.GuestEmail))

@@ -59,7 +59,9 @@ public sealed class UpdateEventValidator : AbstractValidator<UpdateEventCommand>
             .MaximumLength(1024)
             .When(x => !string.IsNullOrWhiteSpace(x.MeetingUrl));
 
-        // Conditional future-start enforcement.
+        // Conditional future-start enforcement. StartDate is a user-entered,
+        // zone-less wall-clock value, so it is compared against server-local
+        // DateTime.Now (NOT UtcNow); timezone-aware handling is a future change.
         RuleFor(x => x.StartDate)
             .GreaterThan(_ => DateTime.Now)
                 .WithMessage("StartDate must be in the future.")
@@ -172,7 +174,7 @@ public sealed class UpdateEventHandler : IRequestHandler<UpdateEventCommand, Eve
         entity.EndDate = request.EndDate;
         entity.MaxAttendees = request.MaxAttendees;
         entity.CoverImageUrl = string.IsNullOrWhiteSpace(request.CoverImageUrl) ? null : request.CoverImageUrl.Trim();
-        entity.UpdatedAt = DateTime.Now;
+        entity.UpdatedAt = DateTime.UtcNow;
 
         await _dbContext.SaveChangesAsync(cancellationToken);
 

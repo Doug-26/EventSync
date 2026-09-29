@@ -101,7 +101,7 @@ public sealed class CurrentUserService : ICurrentUserService
 
         // First sign-in: provision a local row from the available claims.
         // Defaults guard against missing claims so the request can still complete.
-        var now = DateTime.Now;
+        var now = DateTime.UtcNow;
         user = new User
         {
             Id = Guid.NewGuid(),

@@ -170,6 +170,7 @@ dotnet test
 - **Vertical slice architecture** — each feature (e.g., `CreateEvent`) contains its command/query, validator, and handler in a single file, reducing cross-cutting coupling.
 - **Signals over RxJS for state** — component state uses Angular signals; RxJS is reserved for the HTTP layer where Observables are the natural fit.
 - **Soft-delete with global query filters** — events are never physically removed; EF Core query filters hide them transparently.
+- **UTC server timestamps** — all server-generated audit/system timestamps (`CreatedAt`, `UpdatedAt`, RSVP `RespondedAt`, invite-link and user timestamps) use `DateTime.UtcNow`, matching the entity contract. User-entered event times (`StartDate`/`EndDate`/`ExpiresAt`) are intentionally still compared against server-local `DateTime.Now`, because they arrive as zone-less wall-clock values; making those fully timezone-aware is deferred to a dedicated per-event-timezone change.
 - **Cryptographic invite tokens** — generated via `System.Security.Cryptography.RandomNumberGenerator` (256-bit entropy), not `Guid` or `Random`.
 - **Public endpoints bypass the auth interceptor** — the Angular `authInterceptor` skips `/invite/` paths so guests never trigger a token renewal.
 - **RFC 7807 ProblemDetails everywhere** — a global exception middleware translates `ValidationException`, `NotFoundException`, `ForbiddenAccessException`, and `InvalidInviteException` into standardized `application/problem+json` payloads with a `traceId`. Stack traces are included only in Development.

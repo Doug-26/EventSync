@@ -30,6 +30,8 @@ public sealed class CreateInviteLinkValidator : AbstractValidator<CreateInviteLi
     {
         RuleFor(x => x.EventId).NotEmpty();
 
+        // ExpiresAt is user-entered; compared against server-local DateTime.Now
+        // (NOT UtcNow, unlike the audit timestamps) pending timezone-aware handling.
         RuleFor(x => x.ExpiresAt)
             .GreaterThan(_ => DateTime.Now)
                 .WithMessage("ExpiresAt must be in the future.")
@@ -91,7 +93,7 @@ public sealed class CreateInviteLinkHandler : IRequestHandler<CreateInviteLinkCo
             MaxUses = request.MaxUses,
             UseCount = 0,
             IsActive = true,
-            CreatedAt = DateTime.Now,
+            CreatedAt = DateTime.UtcNow,
         };
 
         _dbContext.InviteLinks.Add(entity);
