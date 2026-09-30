@@ -3,6 +3,7 @@ import { DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 
+import { environment } from '../../../../environments/environment';
 import {
   type RsvpConfirmationDto,
   RsvpStatus,
@@ -54,6 +55,11 @@ export class RsvpConfirmationComponent {
     }
     return null;
   });
+
+  /** Public iCalendar (.ics) download URL for this event's invite token. */
+  protected readonly calendarUrl = computed(
+    () => `${environment.apiUrl}/invite/${encodeURIComponent(this.token())}/calendar.ics`,
+  );
 
   /** Status badge text + colour for the confirmation card. */
   protected readonly statusDisplay = computed<StatusDisplay | null>(() => {

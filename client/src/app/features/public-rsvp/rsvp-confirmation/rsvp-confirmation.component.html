@@ -59,14 +59,14 @@
     }
 
     <div class="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-center">
-      <button
-        type="button"
-        disabled
-        class="inline-flex items-center justify-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-500"
-        title="Coming soon"
+      <a
+        [href]="calendarUrl()"
+        download
+        class="inline-flex items-center justify-center gap-1.5 rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
       >
+        <span aria-hidden="true">&#128197;</span>
         Add to calendar
-      </button>
+      </a>
       <a
         [routerLink]="['/rsvp', token()]"
         class="inline-flex items-center justify-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"

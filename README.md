@@ -164,6 +164,7 @@ dotnet test
 |--------|------|-------------|
 | GET | `/api/v1/invite/{token}` | Public event info for invite page |
 | POST | `/api/v1/invite/{token}/rsvp` | Submit or update RSVP |
+| GET | `/api/v1/invite/{token}/calendar.ics` | Download the event as an iCalendar (.ics) file |
 | GET | `/health` | Health check |
 
 ## Architecture Decisions
@@ -178,6 +179,7 @@ dotnet test
 - **IP-partitioned rate limiting on the public RSVP endpoint** — fixed-window (5 requests / 10 minutes) using `System.Threading.RateLimiting`; rejections return `429` with a `Retry-After` header. Authenticated endpoints are intentionally unthrottled.
 - **Capacity enforcement on RSVP** — once an event reaches its `MaxAttendees`, a new `Going` response is rejected with `409 Conflict` (`EventFullException`). Only `Going` consumes a seat (`Maybe`/`NotGoing` never do), and re-submitting an existing `Going` RSVP never locks the guest out of a full event. The public invite page surfaces remaining spots and disables the "Going" option when full. The check is a read-then-write count, so it is not race-proof under heavy concurrency by design.
 - **CSV export hardening** — the organizer RSVP export streams `text/csv` (UTF-8 BOM for Excel) with RFC 4180 quoting and a CSV-injection guard: guest-supplied values beginning with `=`, `+`, `-`, or `@` are prefixed with a single quote so spreadsheet apps don't execute them as formulas.
+- **iCalendar (.ics) download** — guests can add an event to their calendar from a public `calendar.ics` endpoint (RFC 5545, `STATUS:CANCELLED` for cancelled events, RFC 5545 text escaping). Times are emitted as floating local time to match the app's current zone-less date handling; this moves to zoned times with the per-event-timezone work.
 - **Strict HTTP security headers** — dedicated middleware sets CSP (`script-src 'self'`, no inline JS), `X-Content-Type-Options`, `X-Frame-Options: DENY`, `Referrer-Policy`, `Permissions-Policy`, and HSTS (non-Development only). CORS reads `AllowedOrigins` from configuration — wildcards are never used.
 - **Accessibility-first frontend** — skip-to-main-content link, semantic landmarks, focus-trapped confirm dialog, `aria-live` toast region, and a dev-only `axe-core` scan that re-runs on every navigation so violations surface immediately in the console.
 

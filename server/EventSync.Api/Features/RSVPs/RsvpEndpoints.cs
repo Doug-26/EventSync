@@ -5,6 +5,7 @@ using EventSync.Api.Data.Entities;
 using EventSync.Api.Features.Events.Common;
 using EventSync.Api.Features.RSVPs.Common;
 using EventSync.Api.Features.RSVPs.ExportRsvps;
+using EventSync.Api.Features.RSVPs.GetEventCalendar;
 using EventSync.Api.Features.RSVPs.GetPublicEvent;
 using EventSync.Api.Features.RSVPs.GetRsvps;
 using EventSync.Api.Features.RSVPs.GetRsvpSummary;
@@ -163,6 +164,27 @@ public static class RsvpEndpoints
         .WithSummary("Load the public event projection for a guest visiting an invite URL.")
         .AllowAnonymous()
         .Produces<PublicEventDto>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status410Gone);
+
+        group.MapGet("/calendar.ics", async (string token, IMediator mediator, CancellationToken ct) =>
+        {
+            try
+            {
+                var calendar = await mediator.Send(new GetEventCalendarQuery(token), ct);
+                var bytes = Encoding.UTF8.GetBytes(calendar.Content);
+                return Results.File(bytes, "text/calendar; charset=utf-8", calendar.FileName);
+            }
+            catch (InvalidInviteException ex)
+            {
+                return Results.Json(
+                    new { message = ex.Message },
+                    statusCode: StatusCodes.Status410Gone);
+            }
+        })
+        .WithName("GetEventCalendar")
+        .WithSummary("Download the event as an iCalendar (.ics) file for a guest's calendar.")
+        .AllowAnonymous()
+        .Produces(StatusCodes.Status200OK, contentType: "text/calendar")
         .Produces(StatusCodes.Status410Gone);
 
         var submitRsvp = group.MapPost("/rsvp", async (
