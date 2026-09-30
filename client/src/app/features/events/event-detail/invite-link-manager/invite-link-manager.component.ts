@@ -11,6 +11,7 @@ import {
 } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 
+import { environment } from '../../../../../environments/environment';
 import { InviteLinkService } from '../../../../core/api/invite-link.service';
 import type {
   CreateInviteLinkRequest,
@@ -63,6 +64,9 @@ export class InviteLinkManagerComponent {
   protected readonly creating = signal(false);
   protected readonly pendingDeactivateId = signal<string | null>(null);
   protected readonly deactivateBusy = signal(false);
+
+  /** Id of the link whose QR code is currently expanded (one at a time), or null. */
+  protected readonly qrShownId = signal<string | null>(null);
 
   protected readonly form = this.fb.nonNullable.group({
     expiresAt: [''],
@@ -163,6 +167,21 @@ export class InviteLinkManagerComponent {
         );
       },
     });
+  }
+
+  /** Toggle the QR panel for a link (collapses any other open one). */
+  protected toggleQr(link: InviteLinkDto): void {
+    this.qrShownId.update((current) => (current === link.id ? null : link.id));
+  }
+
+  /** True when the given link's QR panel is expanded. */
+  protected isQrShown(link: InviteLinkDto): boolean {
+    return this.qrShownId() === link.id;
+  }
+
+  /** Public PNG QR endpoint URL encoding the link's RSVP URL. */
+  protected qrUrl(link: InviteLinkDto): string {
+    return `${environment.apiUrl}/invite/${encodeURIComponent(link.token)}/qr.png`;
   }
 
   /** Computes the display status (badge text + variant) for a link row. */

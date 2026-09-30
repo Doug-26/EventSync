@@ -131,6 +131,17 @@
             >
               Copy
             </button>
+            @if (statusOf(link) === 'active') {
+              <button
+                type="button"
+                class="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
+                [attr.aria-expanded]="isQrShown(link)"
+                [attr.aria-label]="(isQrShown(link) ? 'Hide' : 'Show') + ' QR code for this invite link'"
+                (click)="toggleQr(link)"
+              >
+                {{ isQrShown(link) ? 'Hide QR' : 'QR' }}
+              </button>
+            }
             @if (link.isActive) {
               <button
                 type="button"
@@ -142,6 +153,32 @@
               </button>
             }
           </div>
+
+          @if (isQrShown(link)) {
+            <div class="sm:col-span-2">
+              <div
+                class="mt-2 flex flex-col items-center gap-2 rounded-md border border-slate-200 bg-slate-50 p-4"
+              >
+                <img
+                  [src]="qrUrl(link)"
+                  [alt]="'QR code linking to ' + link.url"
+                  width="176"
+                  height="176"
+                  class="h-44 w-44 rounded bg-white p-2 shadow-sm"
+                />
+                <p class="text-xs text-slate-500">Scan to open the RSVP page.</p>
+                <a
+                  [href]="qrUrl(link)"
+                  download="invite-qr.png"
+                  target="_blank"
+                  rel="noopener"
+                  class="text-xs font-semibold text-indigo-600 hover:text-indigo-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
+                >
+                  Download PNG
+                </a>
+              </div>
+            </div>
+          }
         </li>
       }
     </ul>

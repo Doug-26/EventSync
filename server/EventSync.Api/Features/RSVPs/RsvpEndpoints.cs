@@ -3,6 +3,7 @@ using EventSync.Api.Common.Exceptions;
 using EventSync.Api.Common.Models;
 using EventSync.Api.Data.Entities;
 using EventSync.Api.Features.Events.Common;
+using EventSync.Api.Features.InviteLinks.GetInviteQrCode;
 using EventSync.Api.Features.RSVPs.Common;
 using EventSync.Api.Features.RSVPs.ExportRsvps;
 using EventSync.Api.Features.RSVPs.GetEventCalendar;
@@ -185,6 +186,27 @@ public static class RsvpEndpoints
         .WithSummary("Download the event as an iCalendar (.ics) file for a guest's calendar.")
         .AllowAnonymous()
         .Produces(StatusCodes.Status200OK, contentType: "text/calendar")
+        .Produces(StatusCodes.Status410Gone);
+
+        group.MapGet("/qr.png", async (string token, IMediator mediator, CancellationToken ct) =>
+        {
+            try
+            {
+                var qr = await mediator.Send(new GetInviteQrCodeQuery(token), ct);
+                // No file name → inline PNG so it renders directly in an <img> tag.
+                return Results.File(qr.Png, "image/png");
+            }
+            catch (InvalidInviteException ex)
+            {
+                return Results.Json(
+                    new { message = ex.Message },
+                    statusCode: StatusCodes.Status410Gone);
+            }
+        })
+        .WithName("GetInviteQrCode")
+        .WithSummary("PNG QR code encoding the invite's public RSVP URL.")
+        .AllowAnonymous()
+        .Produces(StatusCodes.Status200OK, contentType: "image/png")
         .Produces(StatusCodes.Status410Gone);
 
         var submitRsvp = group.MapPost("/rsvp", async (
