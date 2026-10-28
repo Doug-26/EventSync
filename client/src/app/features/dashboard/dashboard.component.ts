@@ -70,3 +70,5 @@ export class DashboardComponent {
       });
   }
 }
+
+// extra comment for testing github workflow
