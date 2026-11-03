@@ -1,0 +1,15 @@
+unit: events-api
+side_effects:
+  - source_loc: server/EventSync.Api/Features/Events/EventEndpoints.cs:27
+    effect: lists, creates, updates, cancels, and soft-deletes organizer events
+    must_preserve: true
+branches: []
+error_paths:
+  - source_loc: server/EventSync.Api/Features/Events/EventEndpoints.cs:27
+    trigger: request failure or validation failure
+    outcome: frontend error state or API ProblemDetails response
+    contract: HTTP error status appropriate to the endpoint
+    must_preserve: true
+concurrency:
+  model: async
+  tx_boundary: {source_loc: server/EventSync.Api/Features/Events/EventEndpoints.cs:27, scope: endpoint handler and its EF operation, isolation: database default, must_preserve: true}

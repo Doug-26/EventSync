@@ -1,0 +1,15 @@
+unit: public-rsvp-page
+side_effects:
+  - source_loc: client/src/app/features/public-rsvp/rsvp-page/rsvp-page.component.ts:1
+    effect: loads invite data and submits anonymous RSVP; presents validation and confirmation states
+    must_preserve: true
+branches: []
+error_paths:
+  - source_loc: client/src/app/features/public-rsvp/rsvp-page/rsvp-page.component.ts:1
+    trigger: request failure or validation failure
+    outcome: frontend error state or API ProblemDetails response
+    contract: HTTP error status appropriate to the endpoint
+    must_preserve: true
+concurrency:
+  model: async
+  tx_boundary: {source_loc: client/src/app/features/public-rsvp/rsvp-page/rsvp-page.component.ts:1, scope: endpoint handler and its EF operation, isolation: database default, must_preserve: true}

@@ -1,0 +1,21 @@
+flows:
+  - name: auth0-bearer-to-api
+    medium: http-header
+    key: Authorization
+    writer: {unit: dashboard-page, source_loc: client/src/app/core/auth/auth.interceptor.ts:48}
+    reader: {unit: events-api, source_loc: server/EventSync.Api/Program.cs:98}
+    pairing: matched
+    must_preserve: true
+    must_confirm: null
+    verification_hint: "Authenticated browser request contains a bearer token and API validates its audience."
+    notes: "Auth interceptor adds the token for protected API calls."
+  - name: cors-origin
+    medium: http-header
+    key: Origin
+    writer: {unit: dashboard-page, source_loc: client/src/environments/environment.prod.ts:5}
+    reader: {unit: events-api, source_loc: server/EventSync.Api/Program.cs:127}
+    pairing: external-writer
+    must_preserve: true
+    must_confirm: runtime
+    verification_hint: "OPTIONS request from the deployed SPA origin must return Access-Control-Allow-Origin equal to that origin."
+    notes: "The browser supplies Origin; the API compares it with AllowedOrigins."

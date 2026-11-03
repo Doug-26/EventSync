@@ -1,0 +1,19 @@
+modules:
+  - name: auth-interceptor
+    kind: interceptor
+    source_loc: client/src/app/core/auth/auth.interceptor.ts:1
+    used_by_units: [dashboard-page, public-rsvp-page]
+    fields: [{name: intercept, type: HttpInterceptorFn}, {name: isPublicInviteRequest, type: function}]
+    god_class: false
+    split_candidate: false
+    migration_strategy: copy
+    notes: "Shared HTTP auth behavior; public invite paths intentionally skip token attachment."
+  - name: app-db-context
+    kind: config
+    source_loc: server/EventSync.Api/Data/AppDbContext.cs:1
+    used_by_units: [auth-api, events-api, event-types-api, invite-links-api, public-rsvp-api, organizer-rsvp-api, uploads-api, health-endpoints]
+    fields: [{name: Users, type: DbSet<User>}, {name: Events, type: DbSet<Event>}, {name: EventTypes, type: DbSet<EventType>}, {name: InviteLinks, type: DbSet<InviteLink>}, {name: Rsvps, type: DbSet<Rsvp>}]
+    god_class: false
+    split_candidate: false
+    migration_strategy: wrap
+    notes: "Single EF Core persistence boundary used by all backend units."

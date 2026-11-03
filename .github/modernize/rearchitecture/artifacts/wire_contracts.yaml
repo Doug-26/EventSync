@@ -1,0 +1,25 @@
+contracts:
+  - name: authenticated-events-list
+    unit: events-api
+    type: rest
+    stability: frozen
+    source_loc: server/EventSync.Api/Features/Events/EventEndpoints.cs:33
+    contract: {method: GET, path: /api/v1/events, request: page/pageSize/search/typeId/sortBy/sortDir query parameters plus bearer JWT, response: paged event summaries, error: 401/403/4xx ProblemDetails, auth: Auth0 JWT}
+    target_contract: {method: "GET /api/v1/events", notes: "Preserve query names, paging response, bearer auth, and CORS preflight behavior."}
+    semantic_divergence: []
+  - name: public-rsvp
+    unit: public-rsvp-api
+    type: rest
+    stability: frozen
+    source_loc: server/EventSync.Api/Features/RSVPs/RsvpEndpoints.cs:146
+    contract: {method: GET/POST, path: /api/v1/invite/{token}, request: token and RSVP JSON for POST, response: public event or confirmation, error: invalid/expired/full invite ProblemDetails, auth: anonymous bearer invite token}
+    target_contract: {method: "GET/POST /api/v1/invite/{token}", notes: "Preserve anonymous access and rate limiting on RSVP submission."}
+    semantic_divergence: []
+  - name: sql-persistence
+    unit: global
+    type: sql
+    stability: frozen
+    source_loc: server/EventSync.Api/Program.cs:41
+    contract: {method: EF Core SQL Server, path: DefaultConnection, request: relational entity operations, response: persisted EventSync entities, error: connection/migration failures, auth: connection string}
+    target_contract: {method: "EF Core DbContext using ConnectionStrings:DefaultConnection", notes: "Preserve migrations and entity relationships."}
+    semantic_divergence: []

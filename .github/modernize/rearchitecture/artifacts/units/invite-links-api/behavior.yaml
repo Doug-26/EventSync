@@ -1,0 +1,15 @@
+unit: invite-links-api
+side_effects:
+  - source_loc: server/EventSync.Api/Features/InviteLinks/InviteLinkEndpoints.cs:21
+    effect: lists, creates, and deactivates organizer invite links
+    must_preserve: true
+branches: []
+error_paths:
+  - source_loc: server/EventSync.Api/Features/InviteLinks/InviteLinkEndpoints.cs:21
+    trigger: request failure or validation failure
+    outcome: frontend error state or API ProblemDetails response
+    contract: HTTP error status appropriate to the endpoint
+    must_preserve: true
+concurrency:
+  model: async
+  tx_boundary: {source_loc: server/EventSync.Api/Features/InviteLinks/InviteLinkEndpoints.cs:21, scope: endpoint handler and its EF operation, isolation: database default, must_preserve: true}

@@ -1,0 +1,15 @@
+unit: organizer-rsvp-api
+side_effects:
+  - source_loc: server/EventSync.Api/Features/RSVPs/RsvpEndpoints.cs:47
+    effect: lists, summarizes, and exports organizer RSVPs
+    must_preserve: true
+branches: []
+error_paths:
+  - source_loc: server/EventSync.Api/Features/RSVPs/RsvpEndpoints.cs:47
+    trigger: request failure or validation failure
+    outcome: frontend error state or API ProblemDetails response
+    contract: HTTP error status appropriate to the endpoint
+    must_preserve: true
+concurrency:
+  model: async
+  tx_boundary: {source_loc: server/EventSync.Api/Features/RSVPs/RsvpEndpoints.cs:47, scope: endpoint handler and its EF operation, isolation: database default, must_preserve: true}

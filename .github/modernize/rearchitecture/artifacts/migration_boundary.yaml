@@ -1,0 +1,12 @@
+user_intent:
+  raw_request: "Analyze the whole app and investigate the live issue."
+  inferred_acceptance: ["explain application behavior", "identify cause of live browser failure"]
+  cleanup_required: false
+strategy: minimal_runtime
+runtime_reachable: [server/EventSync.Api/Program.cs, client/src/app/app.config.ts, client/src/environments/environment.prod.ts]
+must_rewrite: []
+copy_as_is: []
+legacy_allowed_to_remain: []
+defer_cleanup: []
+full_rewrite_reason: null
+implementation_rule: "This is an analysis-only boundary; no application rewrite is authorized by the request."

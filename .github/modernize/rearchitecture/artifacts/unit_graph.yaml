@@ -1,0 +1,81 @@
+units:
+  - name: dashboard-page
+    trigger: page
+    trigger_detail: GET /dashboard
+    source_anchors: [{path: client/src/app/features/dashboard/dashboard.component.ts}]
+    exported_signature: []
+    dynamic_entrypoints: [{target: DashboardComponent, mechanism: convention, source_loc: client/src/app/app.routes.ts:22}]
+    depends_on: [{unit: events-api, via: GET /api/v1/events}]
+    shared_refs: []
+  - name: public-rsvp-page
+    trigger: page
+    trigger_detail: GET /rsvp/:token
+    source_anchors: [{path: client/src/app/features/public-rsvp/rsvp-page/rsvp-page.component.ts}]
+    exported_signature: []
+    dynamic_entrypoints: [{target: RsvpPageComponent, mechanism: convention, source_loc: client/src/app/features/public-rsvp/public-rsvp.routes.ts:12}]
+    depends_on: [{unit: public-rsvp-api, via: /api/v1/invite/{token}}]
+    shared_refs: []
+  - name: auth-api
+    trigger: api
+    trigger_detail: GET/PUT /api/v1/auth/profile
+    source_anchors: [{path: server/EventSync.Api/Features/Auth/AuthEndpoints.cs}]
+    exported_signature: []
+    dynamic_entrypoints: [{target: MapAuthEndpoints, mechanism: convention, source_loc: server/EventSync.Api/Program.cs:322}]
+    depends_on: []
+    shared_refs: []
+  - name: events-api
+    trigger: api
+    trigger_detail: CRUD /api/v1/events
+    source_anchors: [{path: server/EventSync.Api/Features/Events/EventEndpoints.cs}]
+    exported_signature: []
+    dynamic_entrypoints: [{target: MapEventEndpoints, mechanism: convention, source_loc: server/EventSync.Api/Program.cs:323}]
+    depends_on: [{unit: auth-api, via: Auth0 JWT/current user}, {unit: event-types-api, via: event type lookup}]
+    shared_refs: []
+  - name: event-types-api
+    trigger: api
+    trigger_detail: GET /api/v1/event-types
+    source_anchors: [{path: server/EventSync.Api/Features/EventTypes/EventTypeEndpoints.cs}]
+    exported_signature: []
+    dynamic_entrypoints: [{target: MapEventTypeEndpoints, mechanism: convention, source_loc: server/EventSync.Api/Program.cs:324}]
+    depends_on: []
+    shared_refs: []
+  - name: invite-links-api
+    trigger: api
+    trigger_detail: /api/v1/events/{eventId}/invite-links and /api/v1/invite-links/{linkId}
+    source_anchors: [{path: server/EventSync.Api/Features/InviteLinks/InviteLinkEndpoints.cs}]
+    exported_signature: []
+    dynamic_entrypoints: [{target: MapInviteLinkEndpoints, mechanism: convention, source_loc: server/EventSync.Api/Program.cs:326}]
+    depends_on: [{unit: events-api, via: event ownership}]
+    shared_refs: []
+  - name: public-rsvp-api
+    trigger: api
+    trigger_detail: /api/v1/invite/{token} public RSVP/calendar/QR routes
+    source_anchors: [{path: server/EventSync.Api/Features/RSVPs/RsvpEndpoints.cs}]
+    exported_signature: []
+    dynamic_entrypoints: [{target: MapRsvpEndpoints, mechanism: convention, source_loc: server/EventSync.Api/Program.cs:327}]
+    depends_on: []
+    shared_refs: []
+  - name: organizer-rsvp-api
+    trigger: api
+    trigger_detail: GET /api/v1/events/{eventId}/rsvps*
+    source_anchors: [{path: server/EventSync.Api/Features/RSVPs/GetRsvps/GetRsvps.cs}]
+    exported_signature: []
+    dynamic_entrypoints: []
+    depends_on: [{unit: events-api, via: event ownership}]
+    shared_refs: []
+  - name: uploads-api
+    trigger: api
+    trigger_detail: POST /api/v1/uploads/images
+    source_anchors: [{path: server/EventSync.Api/Features/Uploads/UploadEndpoints.cs}]
+    exported_signature: []
+    dynamic_entrypoints: [{target: MapUploadEndpoints, mechanism: convention, source_loc: server/EventSync.Api/Program.cs:325}]
+    depends_on: []
+    shared_refs: []
+  - name: health-endpoints
+    trigger: api
+    trigger_detail: GET /health and GET /health/ready
+    source_anchors: [{path: server/EventSync.Api/Program.cs, line: 290}]
+    exported_signature: []
+    dynamic_entrypoints: []
+    depends_on: []
+    shared_refs: []

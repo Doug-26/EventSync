@@ -1,0 +1,15 @@
+unit: public-rsvp-api
+bindings:
+  - type: route-declaration
+    name: server/EventSync.Api/Program.cs:327
+    source_loc: server/EventSync.Api/Program.cs:327
+    target: public-rsvp-api
+    must_appear_in_target: true
+    notes: External route or dynamic registration for this unit.
+runtime_config:
+  - key: AllowedOrigins
+    source_loc: server/EventSync.Api/Program.cs:127
+    source: env
+    default_value: development localhost only
+    must_appear_in_target: true
+    notes: Controls browser CORS allowlist for API calls.

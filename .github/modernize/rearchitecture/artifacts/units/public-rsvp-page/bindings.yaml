@@ -1,0 +1,15 @@
+unit: public-rsvp-page
+bindings:
+  - type: route-declaration
+    name: client/src/app/features/public-rsvp/public-rsvp.routes.ts:12
+    source_loc: client/src/app/features/public-rsvp/public-rsvp.routes.ts:12
+    target: public-rsvp-page
+    must_appear_in_target: true
+    notes: External route or dynamic registration for this unit.
+runtime_config:
+  - key: AllowedOrigins
+    source_loc: server/EventSync.Api/Program.cs:127
+    source: env
+    default_value: development localhost only
+    must_appear_in_target: true
+    notes: Controls browser CORS allowlist for API calls.

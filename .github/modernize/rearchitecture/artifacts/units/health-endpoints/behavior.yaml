@@ -1,0 +1,15 @@
+unit: health-endpoints
+side_effects:
+  - source_loc: server/EventSync.Api/Program.cs:290
+    effect: returns public liveness and DB-backed readiness responses
+    must_preserve: true
+branches: []
+error_paths:
+  - source_loc: server/EventSync.Api/Program.cs:290
+    trigger: request failure or validation failure
+    outcome: frontend error state or API ProblemDetails response
+    contract: HTTP error status appropriate to the endpoint
+    must_preserve: true
+concurrency:
+  model: async
+  tx_boundary: {source_loc: server/EventSync.Api/Program.cs:290, scope: endpoint handler and its EF operation, isolation: database default, must_preserve: true}
