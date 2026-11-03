@@ -71,4 +71,4 @@ export class DashboardComponent {
   }
 }
 
-// extra comment for testing github workflow
+/// extra comment for testing github workflow
