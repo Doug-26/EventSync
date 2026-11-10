@@ -59,6 +59,7 @@ export class EventService {
     if (params.typeId !== null && params.typeId !== undefined) {
       httpParams = httpParams.set('typeId', params.typeId);
     }
+    if (params.pastOnly) httpParams = httpParams.set('pastOnly', true);
     if (params.sortBy) httpParams = httpParams.set('sortBy', params.sortBy);
     if (params.sortDir) httpParams = httpParams.set('sortDir', params.sortDir);
 

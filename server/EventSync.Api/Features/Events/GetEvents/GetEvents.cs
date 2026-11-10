@@ -16,6 +16,7 @@ namespace EventSync.Api.Features.Events.GetEvents;
 /// <param name="PageSize">Items per page. Clamped to [1, 50].</param>
 /// <param name="Search">Optional case-insensitive title search fragment.</param>
 /// <param name="TypeId">Optional EventType filter.</param>
+/// <param name="PastOnly">When true, return only events whose start date has passed.</param>
 /// <param name="SortBy">Either <c>"date"</c> (StartDate) or <c>"title"</c>.</param>
 /// <param name="SortDir">Either <c>"asc"</c> or <c>"desc"</c>.</param>
 public sealed record GetEventsQuery(
@@ -23,6 +24,7 @@ public sealed record GetEventsQuery(
     int PageSize = 10,
     string? Search = null,
     int? TypeId = null,
+    bool PastOnly = false,
     string SortBy = "date",
     string SortDir = "asc") : IRequest<PagedResult<EventSummaryDto>>;
 
@@ -68,6 +70,11 @@ public sealed class GetEventsHandler : IRequestHandler<GetEventsQuery, PagedResu
         if (request.TypeId is int typeId && typeId > 0)
         {
             query = query.Where(e => e.EventTypeId == typeId);
+        }
+
+        if (request.PastOnly)
+        {
+            query = query.Where(e => e.StartDate < DateTime.Now);
         }
 
         var sortDescending = string.Equals(request.SortDir, "desc", StringComparison.OrdinalIgnoreCase);

@@ -9,13 +9,21 @@
         {{ totalCount() }} event{{ totalCount() === 1 ? '' : 's' }} total
       </p>
     </div>
-    <a
-      routerLink="/events/create"
-      class="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
-    >
-      <span aria-hidden="true">+</span>
-      <span>Create Event</span>
-    </a>
+    <div class="flex flex-wrap gap-2">
+      <a
+        routerLink="/events/history"
+        class="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
+      >
+        Event history
+      </a>
+      <a
+        routerLink="/events/create"
+        class="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
+      >
+        <span aria-hidden="true">+</span>
+        <span>Create Event</span>
+      </a>
+    </div>
   </header>
 
   <!-- Filter bar -->

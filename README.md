@@ -30,6 +30,7 @@ A full-stack event management platform that lets organizers create events, gener
 | 4C | Public RSVP page (anonymous), confirmation page, organizer RSVP list | ✅ |
 | 5A | Backend security hardening — rate limiting, security headers, RFC 7807 error handling, CORS lockdown | ✅ |
 | 5B | Frontend polish — global error handler + HTTP interceptor, skip-nav, accessible toasts, dev-only axe-core scan | ✅ |
+| 6 | Event history — past-event archive with links to event details and RSVP responses | ✅ |
 
 ## Project Structure
 
@@ -143,7 +144,7 @@ dotnet test
 |--------|------|-------------|
 | GET | `/api/v1/auth/profile` | Current user profile |
 | PUT | `/api/v1/auth/profile` | Update display name / avatar |
-| GET | `/api/v1/events` | List events (paginated, filterable) |
+| GET | `/api/v1/events` | List events (paginated, filterable; add `pastOnly=true` for event history) |
 | POST | `/api/v1/events` | Create event |
 | GET | `/api/v1/events/{id}` | Event detail with invite links + RSVP summary |
 | PUT | `/api/v1/events/{id}` | Update event |
@@ -157,6 +158,10 @@ dotnet test
 | GET | `/api/v1/events/{id}/rsvps/export` | Download all RSVPs as a CSV file |
 | GET | `/api/v1/event-types` | Event type lookups |
 | POST | `/api/v1/uploads/images` | Upload cover image |
+
+### Azure cost impact of event history
+
+Event history adds no Azure resources or recurring services. It uses the existing authenticated event-list, event-detail, and RSVP endpoints, so the deployment remains within the documented `$0/month` target when using Azure Static Web Apps Free, App Service Linux F1, and the Azure SQL Database Free Offer within their quotas. The history page adds only read queries; review the current pricing portal before deployment and do not enable Application Insights or change the App Service plan to B1 without accepting the resulting charge.
 
 ### Public (no authentication)
 

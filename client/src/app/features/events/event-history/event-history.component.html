@@ -1,0 +1,145 @@
+<section class="mx-auto max-w-6xl px-4 py-8 sm:px-6" aria-labelledby="history-heading">
+  <header class="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
+    <div>
+      <a routerLink="/events" class="text-sm font-medium text-indigo-700 hover:underline">
+        <span aria-hidden="true">←</span> Back to my events
+      </a>
+      <h1 id="history-heading" class="mt-3 text-2xl font-semibold text-slate-900 sm:text-3xl">
+        Event history
+      </h1>
+      <p class="mt-1 text-sm text-slate-600">
+        Previous events you created and the responses they received.
+      </p>
+    </div>
+    <a
+      routerLink="/events/create"
+      class="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
+    >
+      <span aria-hidden="true">+</span>
+      Create event
+    </a>
+  </header>
+
+  @if (loading()) {
+    <div class="mt-10 flex items-center justify-center rounded-lg border border-slate-200 bg-white p-12 shadow-sm">
+      <app-loading-spinner size="lg" label="Loading event history" />
+    </div>
+  } @else if (errorMessage(); as msg) {
+    <p role="alert" class="mt-6 rounded border border-rose-200 bg-rose-50 px-4 py-2 text-sm text-rose-800">
+      {{ msg }}
+    </p>
+  } @else if (events().length === 0) {
+    <div class="mt-10 rounded-lg border border-dashed border-slate-300 bg-white p-10 text-center">
+      <p class="text-4xl" aria-hidden="true">🗓️</p>
+      <h2 class="mt-3 text-lg font-semibold text-slate-900">No previous events</h2>
+      <p class="mt-1 text-sm text-slate-600">
+        Once an event has finished, it will appear here with its RSVP responses.
+      </p>
+    </div>
+  } @else {
+    <p class="mt-6 text-sm text-slate-600" aria-live="polite">
+      {{ totalCount() }} previous event{{ totalCount() === 1 ? '' : 's' }}
+    </p>
+
+    <div class="mt-3 hidden overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm md:block">
+      <table class="min-w-full divide-y divide-slate-200">
+        <caption class="sr-only">Previous events and RSVP response counts</caption>
+        <thead class="bg-slate-50">
+          <tr>
+            <th scope="col" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Event</th>
+            <th scope="col" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Date</th>
+            <th scope="col" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Location</th>
+            <th scope="col" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Going</th>
+            <th scope="col" class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-600">Details and responses</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+          @for (item of events(); track trackById($index, item)) {
+            <tr>
+              <td class="px-4 py-4">
+                <a [routerLink]="['/events', item.id]" class="font-medium text-indigo-700 hover:underline">
+                  {{ item.eventTypeIcon }} {{ item.title }}
+                </a>
+                <div class="mt-1">
+                  @if (statusOf(item) === 'cancelled') {
+                    <span class="inline-flex rounded-full bg-rose-100 px-2 py-0.5 text-xs font-medium text-rose-800">Cancelled</span>
+                  } @else {
+                    <span class="inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700">Past</span>
+                  }
+                </div>
+              </td>
+              <td class="px-4 py-4 text-sm text-slate-700">{{ item.startDate | date: 'medium' }}</td>
+              <td class="px-4 py-4 text-sm text-slate-700">{{ item.isVirtual ? 'Virtual' : (item.location ?? '—') }}</td>
+              <td class="px-4 py-4 text-sm text-slate-700">{{ item.rsvpCount }}</td>
+              <td class="px-4 py-4 text-right">
+                <a
+                  [routerLink]="['/events', item.id]"
+                  class="inline-flex rounded-md border border-indigo-200 px-3 py-1.5 text-sm font-medium text-indigo-700 hover:bg-indigo-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
+                >
+                  View details &amp; responses
+                </a>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <ul class="mt-3 grid gap-3 md:hidden" role="list">
+      @for (item of events(); track trackById($index, item)) {
+        <li class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+          <div class="flex items-start justify-between gap-3">
+            <a [routerLink]="['/events', item.id]" class="font-semibold text-indigo-700 hover:underline">
+              {{ item.eventTypeIcon }} {{ item.title }}
+            </a>
+            @if (statusOf(item) === 'cancelled') {
+              <span class="shrink-0 rounded-full bg-rose-100 px-2 py-0.5 text-xs font-medium text-rose-800">Cancelled</span>
+            }
+          </div>
+          <dl class="mt-3 grid grid-cols-2 gap-3 text-sm">
+            <div>
+              <dt class="text-xs font-semibold uppercase tracking-wide text-slate-500">Date</dt>
+              <dd class="mt-1 text-slate-700">{{ item.startDate | date: 'mediumDate' }}</dd>
+            </div>
+            <div>
+              <dt class="text-xs font-semibold uppercase tracking-wide text-slate-500">Going</dt>
+              <dd class="mt-1 text-slate-700">{{ item.rsvpCount }}</dd>
+            </div>
+            <div class="col-span-2">
+              <dt class="text-xs font-semibold uppercase tracking-wide text-slate-500">Location</dt>
+              <dd class="mt-1 text-slate-700">{{ item.isVirtual ? 'Virtual' : (item.location ?? '—') }}</dd>
+            </div>
+          </dl>
+          <a
+            [routerLink]="['/events', item.id]"
+            class="mt-4 inline-flex w-full justify-center rounded-md border border-indigo-200 px-3 py-2 text-sm font-medium text-indigo-700 hover:bg-indigo-50"
+          >
+            View details &amp; responses
+          </a>
+        </li>
+      }
+    </ul>
+
+    @if (totalPages() > 1) {
+      <nav class="mt-6 flex items-center justify-between" aria-label="Event history pagination">
+        <button
+          type="button"
+          (click)="goToPage(currentPage() - 1)"
+          [disabled]="currentPage() <= 1"
+          class="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          Previous
+        </button>
+        <p class="text-sm text-slate-600">Page {{ currentPage() }} of {{ totalPages() }}</p>
+        <button
+          type="button"
+          (click)="goToPage(currentPage() + 1)"
+          [disabled]="currentPage() >= totalPages()"
+          class="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          Next
+        </button>
+      </nav>
+    }
+  }
+</section>

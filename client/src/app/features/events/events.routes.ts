@@ -22,6 +22,12 @@ export const EVENTS_ROUTES: Routes = [
     title: 'Create event — EventSync',
   },
   {
+    path: 'history',
+    loadComponent: () =>
+      import('./event-history/event-history.component').then((m) => m.EventHistoryComponent),
+    title: 'Event history — EventSync',
+  },
+  {
     path: ':id/edit',
     loadComponent: () =>
       import('./edit-event/edit-event.component').then((m) => m.EditEventComponent),

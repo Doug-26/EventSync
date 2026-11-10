@@ -37,15 +37,16 @@ public static class EventEndpoints
             [FromQuery] int pageSize = 10,
             [FromQuery] string? search = null,
             [FromQuery] int? typeId = null,
+            [FromQuery] bool pastOnly = false,
             [FromQuery] string sortBy = "date",
             [FromQuery] string sortDir = "asc") =>
         {
             var result = await mediator.Send(
-                new GetEventsQuery(page, pageSize, search, typeId, sortBy, sortDir), ct);
+                new GetEventsQuery(page, pageSize, search, typeId, pastOnly, sortBy, sortDir), ct);
             return Results.Ok(result);
         })
         .WithName("GetEvents")
-        .WithSummary("List the current user's events with paging, search and filters.")
+        .WithSummary("List the current user's events with paging, search, filters, and optional past-only history.")
         .Produces<PagedResult<EventSummaryDto>>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status401Unauthorized);
 

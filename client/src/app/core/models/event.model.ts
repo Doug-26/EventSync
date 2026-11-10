@@ -112,6 +112,8 @@ export interface EventListParams {
   readonly pageSize?: number;
   readonly search?: string | null;
   readonly typeId?: number | null;
+  /** Return only events whose start date is in the past. */
+  readonly pastOnly?: boolean;
   readonly sortBy?: 'date' | 'title';
   readonly sortDir?: 'asc' | 'desc';
 }
