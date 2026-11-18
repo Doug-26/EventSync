@@ -120,6 +120,12 @@ public sealed class CapacityApiFactory : WebApplicationFactory<global::Program>
         // Development skips the auto-migrate block (unsupported on InMemory) and HSTS/HTTPS.
         builder.UseEnvironment("Development");
 
+        // Program.cs reads the connection string eagerly while building, before
+        // ConfigureAppConfiguration overrides apply. UseSetting is applied early
+        // enough. Without it, the tests only passed on machines that have the
+        // gitignored appsettings.Development.json (they failed in CI).
+        builder.UseSetting("ConnectionStrings:DefaultConnection", "Server=(localdb)\\ignored;Database=ignored");
+
         builder.ConfigureAppConfiguration((_, config) =>
         {
             config.AddInMemoryCollection(new Dictionary<string, string?>

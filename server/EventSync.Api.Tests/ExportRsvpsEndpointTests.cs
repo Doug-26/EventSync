@@ -91,6 +91,10 @@ public sealed class AuthenticatedApiFactory : WebApplicationFactory<global::Prog
     {
         builder.UseEnvironment("Development");
 
+        // See CapacityApiFactory: the connection string must be supplied via
+        // UseSetting because Program.cs reads it before ConfigureAppConfiguration applies.
+        builder.UseSetting("ConnectionStrings:DefaultConnection", "Server=(localdb)\\ignored;Database=ignored");
+
         builder.ConfigureAppConfiguration((_, config) =>
         {
             config.AddInMemoryCollection(new Dictionary<string, string?>

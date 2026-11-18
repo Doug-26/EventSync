@@ -154,6 +154,7 @@ There is no lint script or ESLint. Prettier settings live in `client/package.jso
 
 - `client/public/staticwebapp.config.json` only does SPA fallback. The SPA calls the API cross-origin by its absolute URL; there is no `/api` proxy.
 - Some endpoint files (`AuthEndpoints`, `EventEndpoints`, `InviteLinkEndpoints`) still catch `ValidationException` locally, even though the global middleware already handles it.
+- In integration-test factories (`WebApplicationFactory`), config that `Program.cs` reads before `builder.Build()` (such as the connection string) must be supplied with `builder.UseSetting(...)`. `ConfigureAppConfiguration` applies too late. Tests that only pass because of the local, gitignored `appsettings.Development.json` will fail in CI, where the deploy workflow runs `dotnet test`.
 - `eb-app.zip` and `server/EventSync.Api/publish.zip` are build artifacts tracked in git.
 - The initial bundle is slightly over the 500 kB budget warning in `angular.json`.
 - `dotnet restore` reports NU190x vulnerability warnings for Microsoft.OpenApi 2.4.1 and System.Security.Cryptography.Pkcs 9.0.4. These are transitive packages.
