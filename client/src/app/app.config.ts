@@ -3,11 +3,14 @@ import { provideHttpClient, withFetch, withInterceptors } from '@angular/common/
 import {
   ApplicationConfig,
   ErrorHandler,
+  inject,
+  provideAppInitializer,
   provideBrowserGlobalErrorListeners,
 } from '@angular/core';
 import { provideRouter, withComponentInputBinding } from '@angular/router';
 import { provideAuth0 } from '@auth0/auth0-angular';
 
+import { ServerStatusService } from './core/api/server-status.service';
 import { authInterceptor } from './core/auth/auth.interceptor';
 import { errorInterceptor } from './core/error/error.interceptor';
 import { GlobalErrorHandler } from './core/error/global-error-handler';
@@ -27,10 +30,13 @@ import { routes } from './app.routes';
  *   handler for uncaught (non-HTTP) errors.
  * - `provideAuth0(...)`          — initialises the Auth0 SPA SDK with the
  *   tenant settings from `environment.auth0`.
+ * - `provideAppInitializer(...)` — non-blocking wake-up ping so a sleeping
+ *   free-tier backend/DB starts resuming in parallel with Auth0 sign-in.
  */
 export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
+    provideAppInitializer(() => inject(ServerStatusService).wakeServer()),
     provideRouter(routes, withComponentInputBinding()),
     provideHttpClient(withFetch(), withInterceptors([authInterceptor, errorInterceptor])),
     { provide: ErrorHandler, useClass: GlobalErrorHandler },

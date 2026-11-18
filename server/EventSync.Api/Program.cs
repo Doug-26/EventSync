@@ -40,7 +40,20 @@ if (builder.Environment.IsDevelopment())
 // EF Core (SQL Server / LocalDB).
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
     ?? throw new InvalidOperationException("Missing connection string 'DefaultConnection'.");
-builder.Services.AddDbContext<AppDbContext>(options => options.UseSqlServer(connectionString));
+//
+// Retry-on-failure matters in production: the Azure SQL Free (serverless) DB
+// auto-pauses after 60 min idle and answers the first connection with
+// transient error 40613 while it resumes. EF's SQL Server execution strategy
+// treats 40613 as transient, so requests wait for the resume instead of failing.
+// Safe because no code opens manual transactions (BeginTransaction/TransactionScope).
+builder.Services.AddDbContext<AppDbContext>(options => options.UseSqlServer(connectionString, sql =>
+{
+    sql.EnableRetryOnFailure(
+        maxRetryCount: 6,
+        maxRetryDelay: TimeSpan.FromSeconds(30),
+        errorNumbersToAdd: null);
+    sql.CommandTimeout(60);
+}));
 
 // MediatR — scan the current assembly for handlers/behaviors.
 builder.Services.AddMediatR(cfg =>
@@ -140,7 +153,10 @@ builder.Services.AddCors(options =>
         .WithOrigins(allowedOrigins)
         .WithMethods("GET", "POST", "PUT", "PATCH", "DELETE")
         .WithHeaders("Authorization", "Content-Type")
-        .AllowCredentials());
+        .AllowCredentials()
+        // Let browsers cache the preflight so every authenticated call doesn't
+        // pay an extra OPTIONS round trip (Chrome caps this at 2 h).
+        .SetPreflightMaxAge(TimeSpan.FromMinutes(10)));
 });
 
 // ---------------------------------------------------------------------------
@@ -217,9 +233,14 @@ builder.Services.AddSwaggerGen(options =>
 
 var app = builder.Build();
 
-// Auto-apply EF Core migrations in non-Development environments.
-// Keeps deploys to Docker / Azure / AWS hands-free.
-if (!app.Environment.IsDevelopment())
+// Optionally apply EF Core migrations at startup (Database:MigrateOnStartup).
+//
+// Off by default: on Azure the serverless DB is usually paused when the app
+// starts, and migrating here would block Kestrel until the DB resumed (or crash
+// the process), so App Service would serve CORS-less 502/503 pages meanwhile.
+// docker-compose turns it on for hands-free local containers. For a production
+// deploy that adds a migration, see DEPLOYMENT.md §6.8.
+if (app.Configuration.GetValue<bool>("Database:MigrateOnStartup"))
 {
     using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<EventSync.Api.Data.AppDbContext>();
@@ -296,9 +317,12 @@ app.MapGet("/health", () => Results.Ok(new
 .WithTags("Diagnostics")
 .AllowAnonymous();
 
-// Readiness probe / keep-alive target. Opens a DB connection so scheduled pings
-// keep the Azure SQL Free tier from auto-pausing (App Service F1 is warmed by
-// the request itself). Kept intentionally cheap — no queries against user data.
+// Readiness probe / DB wake-up. Opens a DB connection, which makes a paused
+// Azure SQL Free DB start resuming. The SPA calls it once on page load so the
+// resume overlaps with Auth0 sign-in. Do NOT ping it on a schedule: every call
+// keeps the DB online (billed) for at least the 60-min auto-pause delay, and
+// staying online 24/7 would exhaust the monthly free vCore budget in ~2 days.
+// Scheduled keep-alive pings must target /health instead.
 app.MapGet("/health/ready", async (AppDbContext db, CancellationToken ct) =>
 {
     try

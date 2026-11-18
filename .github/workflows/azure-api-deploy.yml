@@ -23,9 +23,22 @@ jobs:
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
-      - run: dotnet restore ${{ env.PROJECT_PATH }}
-      - run: dotnet build ${{ env.PROJECT_PATH }} -c Release --no-restore
-      - run: dotnet publish ${{ env.PROJECT_PATH }} -c Release -o publish --no-build
+      - name: Run tests
+        run: dotnet test server/EventSync.Api.Tests/EventSync.Api.Tests.csproj -c Release
+
+      # ReadyToRun precompiles IL to native code so the API spends far less time
+      # JIT-compiling on startup — noticeable on the shared-CPU F1 plan, where
+      # every cold start / recycle also burns the 60 CPU-min/day quota.
+      # R2R requires a runtime identifier (App Service is Linux x64); the app
+      # stays framework-dependent and uses the platform's .NET runtime.
+      - name: Publish (ReadyToRun)
+        run: >
+          dotnet publish ${{ env.PROJECT_PATH }}
+          -c Release
+          -r linux-x64
+          --self-contained false
+          -p:PublishReadyToRun=true
+          -o publish
 
       - uses: azure/webapps-deploy@v3
         with:

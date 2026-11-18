@@ -4,6 +4,7 @@ import { RouterOutlet } from '@angular/router';
 
 import { FooterComponent } from './layout/footer/footer';
 import { HeaderComponent } from './layout/header/header';
+import { ServerWakingBannerComponent } from './shared/components/server-waking-banner/server-waking-banner.component';
 import { ToastContainerComponent } from './shared/components/toast-container/toast-container.component';
 
 /**
@@ -15,7 +16,13 @@ import { ToastContainerComponent } from './shared/components/toast-container/toa
  */
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, HeaderComponent, FooterComponent, ToastContainerComponent],
+  imports: [
+    RouterOutlet,
+    HeaderComponent,
+    FooterComponent,
+    ServerWakingBannerComponent,
+    ToastContainerComponent,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './app.html',
   styleUrl: './app.css',

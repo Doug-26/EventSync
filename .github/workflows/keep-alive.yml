@@ -1,29 +1,29 @@
-# Keep-alive ping to prevent Azure free-tier cold starts.
+# Keep-alive ping for the API (App Service F1) — BACKUP pinger only.
 #
-# Both the API (App Service F1) and the database (Azure SQL Free Offer) auto-pause
-# after periods of inactivity. First-visit UX after a long idle window is bad:
-# the initial request can take 30–60 seconds while both tiers resume.
+# The primary keep-alive is an external cron-job.org job hitting /health every
+# 5 minutes (see DEPLOYMENT.md §6.8). GitHub throttles high-frequency scheduled
+# workflows on free repos: a `*/10` cron was observed firing only every 4–9 h,
+# so this workflow cannot keep the API warm on its own.
 #
-# This workflow pings /health/ready every 10 minutes. That endpoint runs a
-# lightweight `CanConnectAsync` against SQL so both App Service *and* the DB
-# stay warm. Ten-minute cadence sits comfortably under App Service F1's ~20 min
-# idle threshold and Azure SQL Free's 60 min auto-pause delay.
+# IMPORTANT — ping /health, NEVER /health/ready:
+#   /health is static and never touches SQL. /health/ready opens a DB connection,
+#   which resumes the Azure SQL Free (serverless) DB and keeps it online — and
+#   billed — for at least the 60-min auto-pause delay. An online DB costs
+#   ~1,800 vCore-seconds/hour (0.5 vCore minimum) whether or not it runs queries,
+#   so keeping it awake 24/7 burns ~43,200/day and would exhaust the 100,000
+#   vCore-second monthly free budget in ~2.3 days. The DB is configured to
+#   auto-pause until next month when the budget runs out, which takes the app down.
+#   The DB is woken on demand instead: the SPA calls /health/ready on page load.
 #
-# Cost:
-#   - GitHub Actions minutes: ~10 s/run × 144 runs/day ≈ 24 min/day (well under
-#     the 2,000 min/month free budget for public repos it's free anyway).
-#   - Azure SQL Free vCore-seconds: <1 s per ping × 4,320 pings/month ≈ 4,000
-#     vCore-seconds/month, ~4% of the 100,000 monthly budget.
+# Cost: GitHub Actions minutes only (a few seconds per run). Zero DB cost.
 #
-# To pause pinging (e.g. going on holiday): disable this workflow in the
-# GitHub Actions UI, or comment out the `schedule:` block below.
-name: Keep API warm
+# To pause pinging: disable this workflow in the GitHub Actions UI.
+name: Keep API warm (backup)
 
 on:
   schedule:
-    # Every 10 minutes. GitHub cron is best-effort; occasional 10–15 min gaps
-    # are expected and fine.
-    - cron: '*/10 * * * *'
+    # Best effort. GitHub may delay or skip scheduled runs under load.
+    - cron: '*/15 * * * *'
   workflow_dispatch:
 
 # Guard against overlapping runs if a ping is unusually slow.
@@ -38,25 +38,24 @@ permissions:
 jobs:
   ping:
     runs-on: ubuntu-latest
-    timeout-minutes: 3
+    # 3 attempts × 30 s max + 2 × 20 s sleeps ≈ 2.2 min worst case.
+    timeout-minutes: 5
     env:
       # Production API base URL. Update this if the App Service is renamed.
       API_BASE_URL: https://eventsync-api-h0frhdfsb3gbeth3.southeastasia-01.azurewebsites.net
     steps:
-      - name: Ping /health/ready
+      - name: Ping /health
         run: |
           set -euo pipefail
-          url="${API_BASE_URL%/}/health/ready"
+          url="${API_BASE_URL%/}/health"
           echo "Pinging $url"
 
-          # Retry up to 4 times with 30 s backoff. A truly cold instance can
-          # need ~30–60 s to answer the first request, so a single curl is
-          # not enough for a reliable keep-alive.
           attempt=1
-          max_attempts=4
+          max_attempts=3
+          status="000"
           while (( attempt <= max_attempts )); do
             status=$(curl -sS -o /tmp/body -w '%{http_code}' \
-              --max-time 60 \
+              --max-time 30 \
               --connect-timeout 15 \
               "$url" || echo "000")
             echo "Attempt $attempt → HTTP $status"
@@ -68,11 +67,10 @@ jobs:
             fi
             attempt=$((attempt + 1))
             if (( attempt <= max_attempts )); then
-              sleep 30
+              sleep 20
             fi
           done
 
           echo "::warning::Keep-alive ping failed after $max_attempts attempts (last status $status). API may be genuinely down."
           # Exit 0 so a temporary Azure blip does not spam failure notifications.
-          # The last-status warning is still visible in the run summary.
           exit 0

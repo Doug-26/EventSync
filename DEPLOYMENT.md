@@ -567,6 +567,8 @@ if (!app.Environment.IsDevelopment())
 
 > ⚠ **Why `!IsDevelopment` and not `IsProduction`?** Docker, Azure, and AWS all run as `Production`. Local LocalDB runs as `Development`. Using `!IsDevelopment` covers all three deployment targets in one line.
 
+> ℹ **Later change (Nov 2026):** the current `Program.cs` gates this block on the `Database:MigrateOnStartup` setting instead (default `false`; `docker-compose.yaml` sets it to `true`). On Azure the serverless DB is usually paused when the API starts, and migrating at startup blocked or crashed the app while it resumed. See [6.6](#66-managing-database-changes-with-ef-core-migrations) for how migrations reach Azure now.
+
 #### 3.4.2 Persist the Auth0 session across page refreshes (SPA)
 
 The dev environment file already enables `localStorage` token caching + refresh tokens, but the production environment file does not. Without these two settings, every browser refresh on the Dockerized site forces a re-login.
@@ -1761,7 +1763,15 @@ Recommended client-side behavior:
    git commit -m "Add migration for [what changed]"
    git push
    ```
-6. GitHub Actions deploys and the migration runs automatically on the cloud (thanks to the auto-migration block in `Program.cs` Section 3.4.1).
+6. Apply the migration to Azure SQL — it is **not** automatic on Azure (`Database:MigrateOnStartup` is `false` there; see [6.8](#68-preventing-azure-free-tier-cold-starts-with-a-keep-alive-workflow) for why). Pick one:
+   - **Local (recommended):** from `server/EventSync.Api`, run
+     ```powershell
+     dotnet ef database update --connection "<production connection string>"
+     ```
+     Your IP must be allowed in the SQL server firewall (Azure Portal → SQL server → Networking). Run it **before** pushing code that depends on the new schema.
+   - **On startup, for one deploy:** App Service → Environment variables → add `Database__MigrateOnStartup` = `true`, push and let the deploy start the app (the first start waits for the DB to resume), confirm in Log stream, then **remove the setting** so later restarts don't touch the DB.
+
+   Docker (`docker compose up`) still migrates automatically.
 
 > ⚠ **EF Core gotchas:**
 > - **Never use `--no-build`** after adding a migration — the new class must be compiled or EF won't see it ("No migrations found in assembly").
@@ -1812,64 +1822,88 @@ aws rds describe-db-instances --db-instance-identifier eventsync-db --region ap-
 
 ### 6.8 Preventing Azure free-tier cold starts with a keep-alive workflow
 
-Both the API (App Service **F1**) and the database (**Azure SQL Free Offer**) auto-pause after periods of inactivity to stay within the free quotas:
+The API (App Service **F1**, Linux) and the database (**Azure SQL Free Offer**, serverless) both go to sleep when idle:
 
-- App Service **F1** idles after roughly **20 minutes** with no requests.
-- Azure SQL Free **auto-pauses** after **60 minutes** of no activity.
+- App Service **F1** unloads the app after roughly **20 minutes** with no requests (Always On needs B1).
+- Azure SQL Free **auto-pauses** after **60 minutes** of no connections (`autoPauseDelay: 60`, min capacity **0.5 vCore**).
 
-The first request after a long idle window can take **30–60 seconds** while both tiers resume. To users this looks like a broken site — the browser sees an `HttpErrorResponse` with **status 0** (network abort) while Azure spins the instance back up.
+The two need **different** strategies, because they cost different things.
 
-**Approach: scheduled GitHub Actions ping**
+#### The free vCore budget — why the DB must NOT be kept awake
 
-A workflow (`.github/workflows/keep-alive.yml`) pings the API every 10 minutes, comfortably under both idle thresholds. Because GitHub cron is best-effort, occasional 10–15 minute gaps are expected and safe.
+The Free Offer gives **100,000 vCore-seconds per month**, and this database is configured with `freeLimitExhaustionBehavior: AutoPause` — when the budget runs out, the DB **stays paused until the 1st of next month** and the app is down.
 
-Critically, the ping targets **`/health/ready`** (defined in `Program.cs`), not `/health`:
+An *online* serverless DB is billed for at least its minimum capacity, whether or not it runs queries:
 
-- `/health` returns a static payload — keeps App Service warm but does **not** touch the DB.
-- `/health/ready` runs `AppDbContext.Database.CanConnectAsync()` — opens a real SQL connection so the DB stays warm too.
-
-The endpoint is public, cheap, and returns no user data. If the DB is unreachable it returns **503** rather than leaking driver details.
-
-**Ping strategy inside the workflow**
-
-Each scheduled run retries up to 4 times with 30 s backoff (max ~3 minutes). This matters because if the DB has *already* auto-paused when we ping, the very first `CanConnectAsync` triggers the resume and typically times out; the retry then succeeds against the warm instance. On failure the workflow logs a `::warning::` but exits `0` so a transient Azure blip doesn't spam notification emails.
-
-**Cost impact**
-
-| Resource | Consumption | Free-tier budget |
+| Scenario | vCore-seconds | Budget lasts |
 |---|---|---|
-| GitHub Actions minutes | ~10 s × 144 runs/day ≈ 24 min/day | 2,000 min/month private (public repo = unlimited) |
-| Azure SQL vCore-seconds | ~1 s per ping × ~4,320 pings/month ≈ 4k s/month | 100,000 s/month |
-| Azure SQL storage / bandwidth | 0 — no data returned | — |
+| DB online for 1 hour (0.5 vCore × 3,600 s) | ~1,800 | — |
+| One wake-up (stays online ≥ the 60-min auto-pause delay) | ≥ ~1,800 | — |
+| DB kept online 24/7 | ~43,200 / day | **~2.3 days** |
 
-A per-user cap of 3 events (see [6.9](#69-per-user-event-cap-portfolio-guardrail)) further limits any accidental cost drift.
+So **any scheduled ping that touches the DB is a budget leak**. The old keep-alive pinged `/health/ready` (which opens a SQL connection); GitHub only ran it every 4–9 h, and those runs alone consumed most of the ~3,300 vCore-s/day burned in Nov 2026. Had the `*/10` cron actually run every 10 minutes, the DB would have been paused for the rest of the month within three days.
 
-**Configuration**
+> **Rule:** scheduled keep-alive pings target **`/health`** (static, never touches SQL). **`/health/ready`** (runs `CanConnectAsync`) is only called by the SPA on page load.
 
-The API base URL is hard-coded in the workflow's `env: API_BASE_URL`. If the App Service is renamed, update that one line and commit.
+#### Strategy
 
-**Pausing the pings**
+| Layer | What keeps it fast | Where |
+|---|---|---|
+| App Service (API) | **cron-job.org** pings `/health` every 5 min (primary); GitHub Actions `keep-alive.yml` every 15 min (best-effort backup) | external + `.github/workflows/keep-alive.yml` |
+| API startup | No DB work at startup (`Database:MigrateOnStartup` is `false` on Azure), ReadyToRun publish | `Program.cs`, `azure-api-deploy.yml` |
+| Azure SQL resume | SPA fires a no-cors `GET /health/ready` at bootstrap, so the resume overlaps Auth0 sign-in; EF `EnableRetryOnFailure` (6 retries, ≤30 s delay, `CommandTimeout` 60 s) makes requests *wait* through error 40613 instead of failing | `ServerStatusService.wakeServer()`, `Program.cs` |
+| User experience | GETs retry on 0/502/503/504 for ~38 s; a "Waking up the server…" banner appears once an API GET is pending > 5 s | `error.interceptor.ts`, `server-waking-banner` |
 
-Going on holiday and want the resources to fully idle again?
+Expected result: a visit within ~60 min of the last activity is instant; a visit after a long idle waits only for the DB resume (typically well under a minute), with the banner explaining why.
 
-- Quick pause: GitHub → **Actions** → **Keep API warm** → **⋯** → **Disable workflow**.
-- Full pause: comment out the `schedule:` block in `keep-alive.yml`.
+#### Set up the cron-job.org pinger (one-time, ~2 min)
 
-**How to tell a cold start from other failures**
+1. Sign up at <https://cron-job.org> (free).
+2. **Create cronjob**:
+   - **URL:** `https://<your-api-host>/health` (currently `https://eventsync-api-h0frhdfsb3gbeth3.southeastasia-01.azurewebsites.net/health`)
+   - **Schedule:** every **5 minutes**
+   - **Advanced → Request method:** `GET`, **Timeout:** 30 s
+   - **Notifications:** enable "notify on failure" so you hear about genuine outages.
+3. Save, then use **Test run** — expect HTTP 200 with `{"status":"healthy",...}`.
 
-Even with the keep-alive in place, cold starts can still happen (workflow disabled, deploy just finished, cron delayed, etc.). If a user reports the site being slow to load:
+**F1 CPU quota:** F1 allows 60 CPU-minutes/day. A `/health` hit costs about a millisecond of CPU (~0.3 s/day at 288 pings) — negligible. Keeping the app warm actually *saves* quota, because each cold start spends seconds of CPU on startup and JIT.
+
+**Never point the pinger at `/health/ready`.**
+
+#### Recommended connection-string setting
+
+In App Service → **Environment variables** → `ConnectionStrings__DefaultConnection`, use `Connection Timeout=60` (instead of 30) so a single connection attempt can outlast most of the resume.
+
+#### Checking the free budget (read-only)
+
+```powershell
+$id = az sql db show -s <server> -g <resource-group> -n EventSync --query id -o tsv
+az monitor metrics list --resource $id --metric free_amount_remaining --interval PT24H --aggregation Minimum -o table
+az sql db show -s <server> -g <resource-group> -n EventSync --query status   # Online / Paused
+```
+
+A healthy month burns only what real visitors use (each visit after idle ≈ 1,800+ vCore-s).
+
+#### Pausing the pings
+
+- cron-job.org: disable the job in its dashboard.
+- GitHub backup: **Actions** → **Keep API warm (backup)** → **⋯** → **Disable workflow**.
+
+#### How to tell a cold start from other failures
 
 | Symptom | Likely cause | Where to look |
 |---|---|---|
-| First API call fails with **status 0**, then succeeds on refresh | Cold start slipped through the keep-alive | Actions → **Keep API warm** → check last successful run |
+| Console shows a **CORS preflight error** / `net::ERR_FAILED`, then the data loads | App Service was cold or restarting — its 502/503 pages carry no CORS headers, so the browser reports a "CORS error". The CORS config itself is fine. | cron-job.org history; App Service → **Log stream** |
+| "Waking up the server…" banner for 10–60 s | Azure SQL resuming from auto-pause (expected after ≥ 60 min idle) | `az sql db show ... --query status` |
+| Every API call fails, `/health/ready` returns 503 for hours | Free vCore budget exhausted (DB paused until next month) | `free_amount_remaining` metric above |
 | API call returns **401 Unauthorized** | Stale Auth0 session | See [6.5 Recovering from stale browser sessions](#65-recovering-from-stale-browser-sessions) |
 | API call returns **5xx** with a body | Genuine server error | App Service → **Log stream** |
 
 **Alternatives considered (and why not)**
 
-- **App Service Always-On** — requires B1 (~$13/month). Off the table for a free-tier portfolio.
-- **In-SPA cold-start UI** with retry/backoff — nice UX but only papers over the symptom; the user still waits 30–60 s on every long-idle visit. The keep-alive removes the wait entirely.
-- **Server-side warmup endpoint** — a warmup endpoint on its own doesn't help; *something* has to call it. Combining `/health/ready` with the scheduled workflow is exactly that pairing.
+- **App Service Always On** — requires B1 (~$13/month). Off the table for a free-tier portfolio.
+- **Keeping the DB warm on a schedule** — exhausts the free vCore budget in ~2 days (see table above).
+- **GitHub Actions as the only pinger** — GitHub throttles high-frequency schedules on free repos (observed: every 4–9 h instead of every 10 min).
 
 ### 6.9 Per-user event cap (portfolio guardrail)
 
@@ -1983,7 +2017,8 @@ Database issues after deploying new DbContext changes
 │   → FIX: Generate locally (`dotnet ef migrations add Name`), commit the Migrations/ folder, push again.
 └── Error: "Invalid column name" or schema mismatch errors
     → Migration exists but database schema doesn't match code.
-    → FIX: Check cloud logs that `MigrateAsync()` ran successfully. If it failed, check DB connection string + server firewall rules. Re-run the cloud deployment.
+    → FIX: On Azure, migrations are not applied on startup by default — apply them as described in 6.6 step 6.
+      In Docker, check the api container logs that `MigrateAsync()` ran successfully; if it failed, check the connection string + firewall rules.
 
 Login fails (Auth0)
 ├── Browser dev tools → Network → /authorize request

@@ -28,6 +28,8 @@ services:
       Auth0__Audience: "${AUTH0_AUDIENCE}"
       AllowedOrigins__0: "${FRONTEND_URL}"
       Frontend__BaseUrl: "${FRONTEND_URL}"
+      # Local containers apply EF migrations automatically on startup.
+      Database__MigrateOnStartup: "true"
     depends_on:
       db:
         condition: service_healthy

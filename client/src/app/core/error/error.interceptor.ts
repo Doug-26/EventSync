@@ -2,18 +2,42 @@
 import { HttpErrorResponse, HttpInterceptorFn } from '@angular/common/http';
 import { inject } from '@angular/core';
 import { Router } from '@angular/router';
-import { catchError, retry, throwError, timer } from 'rxjs';
+import { catchError, defer, finalize, retry, throwError, timer } from 'rxjs';
 
+import { environment } from '../../../environments/environment';
 import { ToastService } from '../../shared/services/toast.service';
+import { ServerStatusService } from '../api/server-status.service';
+
+/** Methods that are safe to replay automatically (no duplicate side effects). */
+const IDEMPOTENT_METHODS = new Set(['GET', 'HEAD', 'PUT', 'DELETE']);
+
+/**
+ * Statuses that typically mean "backend not up yet" during an Azure free-tier
+ * cold start. App Service's own 502/503/504 pages carry no CORS headers, so
+ * the browser usually surfaces them as status 0 (a "CORS error" in the console).
+ */
+const COLD_START_STATUSES = new Set([0, 502, 503, 504]);
+
+/** Backoff for idempotent requests: 3 + 6 + 9 + 10 + 10 = 38 s of waiting. */
+const IDEMPOTENT_RETRY_DELAYS_MS = [3000, 6000, 9000, 10000, 10000];
+
+/** Non-idempotent requests (POST/PATCH) only retry when nothing was received. */
+const NON_IDEMPOTENT_RETRY_COUNT = 3;
 
 /**
  * Functional HTTP interceptor that converts low-level HTTP failures into
  * user-facing toasts and standardised navigation side-effects.
  *
- * Behaviour:
+ * Cold-start handling (production runs on Azure free tiers that sleep when idle):
+ * - GET/HEAD/PUT/DELETE retry on 0/502/503/504 with ~38 s of backoff.
+ * - POST/PATCH retry only on status 0 (2 s, 4 s, 6 s), as before.
+ * - API GETs pending > 5 s are reported to {@link ServerStatusService}, which
+ *   shows the "Waking up the server…" banner.
+ *
+ * Behaviour after retries are exhausted:
  * | Status | Action                                                          |
  * |--------|-----------------------------------------------------------------|
- * | 0      | Toast "Unable to connect…" — likely network/CORS failure.       |
+ * | 0      | Toast "Can't reach the server…" — network or backend down.      |
  * | 400    | Re-throw — forms render field-level errors from the response.   |
  * | 401    | Toast + redirect to /login (preserves return URL).              |
  * | 403    | Toast "You don't have permission…".                             |
@@ -32,19 +56,33 @@ import { ToastService } from '../../shared/services/toast.service';
 export const errorInterceptor: HttpInterceptorFn = (req, next) => {
   const toast = inject(ToastService);
   const router = inject(Router);
+  const serverStatus = inject(ServerStatusService);
 
-  return next(req).pipe(
-    // Retry up to 3 times on status 0 (no connection) — handles Azure App
-    // Service cold starts where the backend needs a few seconds to wake up.
-    retry({
-      count: 3,
-      delay: (error, retryCount) => {
-        if (error instanceof HttpErrorResponse && error.status === 0) {
-          return timer(retryCount * 2000); // 2 s, 4 s, 6 s
-        }
-        return throwError(() => error);
-      },
-    }),
+  const idempotent = IDEMPOTENT_METHODS.has(req.method);
+  const trackSlow = req.method === 'GET' && req.url.startsWith(environment.apiUrl);
+
+  return defer(() => {
+    const release = trackSlow ? serverStatus.track() : () => undefined;
+
+    return next(req).pipe(
+      retry({
+        count: idempotent ? IDEMPOTENT_RETRY_DELAYS_MS.length : NON_IDEMPOTENT_RETRY_COUNT,
+        delay: (error, retryCount) => {
+          if (!(error instanceof HttpErrorResponse)) {
+            return throwError(() => error);
+          }
+          if (idempotent && COLD_START_STATUSES.has(error.status)) {
+            return timer(IDEMPOTENT_RETRY_DELAYS_MS[retryCount - 1]);
+          }
+          if (!idempotent && error.status === 0) {
+            return timer(retryCount * 2000); // 2 s, 4 s, 6 s
+          }
+          return throwError(() => error);
+        },
+      }),
+      finalize(release),
+    );
+  }).pipe(
     catchError((error: unknown) => {
       if (!(error instanceof HttpErrorResponse)) {
         // Non-HTTP failure (rare): let it propagate to GlobalErrorHandler.
@@ -53,7 +91,7 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
 
       switch (error.status) {
         case 0:
-          toast.error('Unable to connect. Check your internet.');
+          toast.error("Can't reach the server right now. Please try again in a moment.");
           break;
 
         case 400:
