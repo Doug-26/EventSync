@@ -188,11 +188,15 @@ public static class RsvpEndpoints
         .Produces(StatusCodes.Status200OK, contentType: "text/calendar")
         .Produces(StatusCodes.Status410Gone);
 
-        group.MapGet("/qr.png", async (string token, IMediator mediator, CancellationToken ct) =>
+        group.MapGet("/qr.png", async (string token, HttpContext http, IMediator mediator, CancellationToken ct) =>
         {
             try
             {
                 var qr = await mediator.Send(new GetInviteQrCodeQuery(token), ct);
+                // The PNG only encodes the token's public URL, which never changes, so let
+                // browsers reuse it for a day instead of re-validating and re-rendering
+                // on every view. (Deactivation is still enforced by the RSVP page itself.)
+                http.Response.Headers.CacheControl = "public, max-age=86400";
                 // No file name → inline PNG so it renders directly in an <img> tag.
                 return Results.File(qr.Png, "image/png");
             }

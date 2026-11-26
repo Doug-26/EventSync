@@ -18,6 +18,7 @@ using MediatR;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
@@ -290,8 +291,19 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI(options => options.SwaggerEndpoint("/swagger/v1/swagger.json", "EventSync API v1"));
 }
 
+// Uploads are saved under a fresh GUID file name and never overwritten, so a URL's
+// content is immutable and browsers can cache it for a year. Applied to both static-file
+// middlewares below because either one may end up serving a given upload.
+static void CacheUploadsImmutable(StaticFileResponseContext ctx)
+{
+    if (ctx.Context.Request.Path.StartsWithSegments("/uploads"))
+    {
+        ctx.Context.Response.Headers.CacheControl = "public, max-age=31536000, immutable";
+    }
+}
+
 // Serve uploaded images from wwwroot/ (e.g. /uploads/events/abc.jpg).
-app.UseStaticFiles();
+app.UseStaticFiles(new StaticFileOptions { OnPrepareResponse = CacheUploadsImmutable });
 
 // Explicitly map "/uploads" to the physical wwwroot/uploads folder. This
 // ensures the uploads path is served even if the default webroot mapping
@@ -305,7 +317,8 @@ if (!Directory.Exists(uploadsPhysicalPath))
 app.UseStaticFiles(new StaticFileOptions
 {
     RequestPath = "/uploads",
-    FileProvider = new PhysicalFileProvider(uploadsPhysicalPath)
+    FileProvider = new PhysicalFileProvider(uploadsPhysicalPath),
+    OnPrepareResponse = CacheUploadsImmutable,
 });
 
 // Health-check endpoint. Returns a small JSON payload — no PII, safe to be public.
