@@ -49,7 +49,7 @@ public sealed class GetEventsHandler : IRequestHandler<GetEventsQuery, PagedResu
         GetEventsQuery request,
         CancellationToken cancellationToken)
     {
-        var user = await _currentUser.GetOrCreateUserAsync(cancellationToken);
+        var userId = await _currentUser.GetCurrentUserIdAsync(cancellationToken);
 
         var page = Math.Max(1, request.Page);
         var pageSize = Math.Clamp(request.PageSize, MinPageSize, MaxPageSize);
@@ -57,7 +57,7 @@ public sealed class GetEventsHandler : IRequestHandler<GetEventsQuery, PagedResu
         // Soft-delete is excluded by the global query filter on Event.
         IQueryable<Event> query = _dbContext.Events
             .AsNoTracking()
-            .Where(e => e.OrganizerId == user.Id);
+            .Where(e => e.OrganizerId == userId);
 
         if (!string.IsNullOrWhiteSpace(request.Search))
         {

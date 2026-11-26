@@ -1,4 +1,4 @@
-import { Injectable, computed, signal } from '@angular/core';
+import { Service, computed, signal } from '@angular/core';
 
 import { environment } from '../../../environments/environment';
 
@@ -13,7 +13,7 @@ import { environment } from '../../../environments/environment';
  * interceptor flag requests that stay pending longer than
  * {@link SLOW_REQUEST_MS}, which drives the "waking up" banner.
  */
-@Injectable({ providedIn: 'root' })
+@Service()
 export class ServerStatusService {
   /** A request pending longer than this is considered "slow" (cold start). */
   static readonly SLOW_REQUEST_MS = 5000;

@@ -8,9 +8,9 @@ It is a portfolio project that runs on Azure **free tiers at $0/month**. Many de
 
 | Area | Tech |
 |---|---|
-| Frontend (`client/`) | Angular 21: standalone components, signals, OnPush, new control flow, reactive forms. Tailwind CSS 4. `@auth0/auth0-angular` (PKCE, refresh tokens in localStorage). Vitest is configured, but there are no specs yet. |
+| Frontend (`client/`) | Angular 22 (TypeScript 6): standalone components, signals, zoneless, OnPush (the v22 default), new control flow, reactive forms. Tailwind CSS 4. `@auth0/auth0-angular` (PKCE, refresh tokens in localStorage). Vitest is configured, but there are no specs yet. |
 | Backend (`server/EventSync.Api/`) | .NET 10 Minimal API. MediatR 14 vertical slices with a FluentValidation pipeline. EF Core 10 on SQL Server. Auth0 JWT bearer. Swagger in Development only. QRCoder. |
-| Tests (`server/EventSync.Api.Tests/`) | xUnit. Integration tests use `WebApplicationFactory` with EF InMemory. There are 39 tests. |
+| Tests (`server/EventSync.Api.Tests/`) | xUnit. Integration tests use `WebApplicationFactory` with EF InMemory. There are 45 tests. |
 | Prod hosting | Azure Static Web Apps Free (SPA), App Service **F1 Linux** (API), Azure SQL **Free Offer** (serverless DB), Auth0 free tenant |
 
 ## Repo map
@@ -24,7 +24,7 @@ It is a portfolio project that runs on Azure **free tiers at $0/month**. Many de
   - `Program.cs` is the composition root and middleware pipeline.
   - `Features/<Feature>/<UseCase>/<UseCase>.cs`; features are Auth, Events, EventTypes, InviteLinks, RSVPs and Uploads.
   - `Common/`: middleware, exceptions, behaviors, services.
-  - `Data/`: `AppDbContext` (seeds 11 EventTypes), Fluent configurations, entities.
+  - `Data/`: `AppDbContext` (seeds the 11 EventTypes from `EventTypeCatalog`, which the API also serves from memory), Fluent configurations, entities.
   - `Migrations/`
 - `.github/workflows/`: `azure-api-deploy.yml` (tests, then a ReadyToRun publish to App Service), `azure-web-deploy.yml` (SPA to SWA), `keep-alive.yml` (backup `/health` pinger).
 - Docs:
@@ -68,17 +68,18 @@ There is no lint script or ESLint. Prettier settings live in `client/package.jso
 - **Errors are exceptions, not Result types:**
   - `ValidationException`, `NotFoundException`, `ForbiddenAccessException`, `InvalidInviteException` (410), `EventFullException` (409).
   - `ExceptionHandlingMiddleware` turns them into RFC 7807 ProblemDetails.
-- DTOs are positional records mapped by hand. Mapster is referenced but unused, so don't introduce it. Reads use `AsNoTracking()`.
+- DTOs are positional records mapped by hand (there is no mapping library). Reads use `AsNoTracking()`.
+- Handlers that only need the caller's Id use `ICurrentUserService.GetCurrentUserIdAsync()`, which is memory-cached. `GetOrCreateUserAsync()` (DB hit) is only for handlers that need the `User` entity, i.e. the profile handlers.
 - Ownership checks happen in handlers via `ICurrentUserService`. `GetOrCreateUserAsync` creates the local user on the first API call.
 - Soft delete uses global query filters (`!IsDeleted`).
 - **Timestamps:** audit timestamps use `DateTime.UtcNow`. User-entered event dates (`StartDate`, `EndDate`, `ExpiresAt`) are timezone-less local values compared with `DateTime.Now`. This is intentional.
 - EF uses `EnableRetryOnFailure`, so **don't add manual transactions** (`BeginTransaction`/`TransactionScope`) unless you wrap them in `db.Database.CreateExecutionStrategy().ExecuteAsync(...)`.
 - Public members have XML doc comments.
 
-**Frontend**
+**Frontend** (see also `.claude/rules/angular-best-practices.md`, which loads automatically for `client/**`)
 - Use `inject()`, not constructor DI; `input()`/`input.required()`/`output()`; `computed()`; `@if`/`@for`.
-- Components are OnPush with the `app-` selector prefix, in `kebab-name/kebab-name.component.ts`.
-- Services are `providedIn: 'root'` and return Observables; signals hold UI state.
+- Components use the `app-` selector prefix, in `kebab-name/kebab-name.component.ts`. OnPush is the v22 default, so don't set `changeDetection`.
+- Services use `@Service()` and return Observables; signals hold UI state. The exception is `GlobalErrorHandler`, which keeps `@Injectable` because it is provided via `useClass`.
 - Interceptors and guards are functional. The interceptor order is `authInterceptor`, then `errorInterceptor`.
 - TS strict and `strictTemplates` are on. Styling is Tailwind utilities.
 - Accessibility matters: live regions, focus traps, a skip link, and an axe scan in dev builds.

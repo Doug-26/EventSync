@@ -27,4 +27,7 @@ internal sealed class FakeCurrentUserService : ICurrentUserService
 
     public Task<User> GetOrCreateUserAsync(CancellationToken cancellationToken = default) =>
         Task.FromResult(_user);
+
+    public Task<Guid> GetCurrentUserIdAsync(CancellationToken cancellationToken = default) =>
+        Task.FromResult(_user.Id);
 }

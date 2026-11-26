@@ -7,6 +7,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, interactive-widget=resizes-content">
   <meta name="description" content="EventSync — plan, share, and track event RSVPs.">
   <link rel="icon" type="image/png" href="/eventsync-logo-browser.png">
+  <!-- Open the TLS connections to the API and Auth0 while the JS bundle downloads, so the
+       cold-start wake ping and the first token refresh skip DNS + TLS setup. A preconnect
+       sends no HTTP request: it can't wake the app or the database. `crossorigin` matches
+       the credential-less fetches both make. Hosts mirror environment.prod.ts. -->
+  <link rel="preconnect" href="https://eventsync-api-h0frhdfsb3gbeth3.southeastasia-01.azurewebsites.net" crossorigin>
+  <link rel="preconnect" href="https://dev-nqo6u1us6l2sh6km.us.auth0.com" crossorigin>
 </head>
 <body>
   <app-root></app-root>

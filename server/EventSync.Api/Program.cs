@@ -13,11 +13,11 @@ using EventSync.Api.Features.RSVPs;
 using EventSync.Api.Features.RSVPs.Common;
 using EventSync.Api.Features.Uploads;
 using FluentValidation;
-using FluentValidation.AspNetCore;
 using MediatR;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
@@ -62,12 +62,13 @@ builder.Services.AddMediatR(cfg =>
     cfg.AddOpenBehavior(typeof(ValidationBehavior<,>));
 });
 
-// FluentValidation — automatic ASP.NET Core integration + assembly scanning.
-builder.Services.AddFluentValidationAutoValidation();
+// FluentValidation — assembly scanning. Validation itself runs in the MediatR
+// ValidationBehavior; MVC auto-validation is not used by Minimal APIs.
 builder.Services.AddValidatorsFromAssembly(typeof(Program).Assembly);
 
 // Current-user service requires HTTP context access.
 builder.Services.AddHttpContextAccessor();
+builder.Services.AddMemoryCache(); // Caches Auth0Id → user Id to skip a DB round trip per request.
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 
 // Strongly-typed configuration sections.
@@ -213,23 +214,28 @@ builder.Services.AddRateLimiter(options =>
 });
 
 // Swagger / OpenAPI with Bearer security so the "Authorize" button appears.
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen(options =>
+// Registered in Development only (the UI is only mapped there), so production
+// startup skips building the API explorer and Swagger generator services.
+if (builder.Environment.IsDevelopment())
 {
-    options.SwaggerDoc("v1", new() { Title = "EventSync API v1", Version = "v1" });
-
-    options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    builder.Services.AddEndpointsApiExplorer();
+    builder.Services.AddSwaggerGen(options =>
     {
-        Name = "Authorization",
-        Description = "Paste **only** the JWT (without the 'Bearer ' prefix).",
-        In = ParameterLocation.Header,
-        Type = SecuritySchemeType.Http,
-        Scheme = "bearer",
-        BearerFormat = "JWT",
-    });
+        options.SwaggerDoc("v1", new() { Title = "EventSync API v1", Version = "v1" });
 
-    options.OperationFilter<SecurityRequirementsOperationFilter>(true, "Bearer");
-});
+        options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+        {
+            Name = "Authorization",
+            Description = "Paste **only** the JWT (without the 'Bearer ' prefix).",
+            In = ParameterLocation.Header,
+            Type = SecuritySchemeType.Http,
+            Scheme = "bearer",
+            BearerFormat = "JWT",
+        });
+
+        options.OperationFilter<SecurityRequirementsOperationFilter>(true, "Bearer");
+    });
+}
 
 var app = builder.Build();
 
@@ -289,8 +295,19 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI(options => options.SwaggerEndpoint("/swagger/v1/swagger.json", "EventSync API v1"));
 }
 
+// Uploads are saved under a fresh GUID file name and never overwritten, so a URL's
+// content is immutable and browsers can cache it for a year. Applied to both static-file
+// middlewares below because either one may end up serving a given upload.
+static void CacheUploadsImmutable(StaticFileResponseContext ctx)
+{
+    if (ctx.Context.Request.Path.StartsWithSegments("/uploads"))
+    {
+        ctx.Context.Response.Headers.CacheControl = "public, max-age=31536000, immutable";
+    }
+}
+
 // Serve uploaded images from wwwroot/ (e.g. /uploads/events/abc.jpg).
-app.UseStaticFiles();
+app.UseStaticFiles(new StaticFileOptions { OnPrepareResponse = CacheUploadsImmutable });
 
 // Explicitly map "/uploads" to the physical wwwroot/uploads folder. This
 // ensures the uploads path is served even if the default webroot mapping
@@ -304,7 +321,8 @@ if (!Directory.Exists(uploadsPhysicalPath))
 app.UseStaticFiles(new StaticFileOptions
 {
     RequestPath = "/uploads",
-    FileProvider = new PhysicalFileProvider(uploadsPhysicalPath)
+    FileProvider = new PhysicalFileProvider(uploadsPhysicalPath),
+    OnPrepareResponse = CacheUploadsImmutable,
 });
 
 // Health-check endpoint. Returns a small JSON payload — no PII, safe to be public.

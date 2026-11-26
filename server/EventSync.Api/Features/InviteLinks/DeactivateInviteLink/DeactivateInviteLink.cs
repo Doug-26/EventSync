@@ -30,14 +30,14 @@ public sealed class DeactivateInviteLinkHandler : IRequestHandler<DeactivateInvi
     /// <exception cref="UnauthorizedAccessException">Link belongs to an event owned by another user.</exception>
     public async Task<Unit> Handle(DeactivateInviteLinkCommand request, CancellationToken cancellationToken)
     {
-        var user = await _currentUser.GetOrCreateUserAsync(cancellationToken);
+        var userId = await _currentUser.GetCurrentUserIdAsync(cancellationToken);
 
         var link = await _dbContext.InviteLinks
             .Include(l => l.Event)
             .FirstOrDefaultAsync(l => l.Id == request.LinkId, cancellationToken)
             ?? throw new KeyNotFoundException($"Invite link {request.LinkId} not found.");
 
-        if (link.Event.OrganizerId != user.Id)
+        if (link.Event.OrganizerId != userId)
         {
             throw new UnauthorizedAccessException("You do not have permission to modify this invite link.");
         }

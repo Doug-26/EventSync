@@ -66,8 +66,6 @@ public sealed class InviteValidationService : IInviteValidationService
             .IgnoreQueryFilters()
             .Include(l => l.Event)
                 .ThenInclude(e => e.EventType)
-            .Include(l => l.Event)
-                .ThenInclude(e => e.Organizer)
             .AsNoTracking()
             .FirstOrDefaultAsync(l => l.Token == token, cancellationToken);
 

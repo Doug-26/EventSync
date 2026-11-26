@@ -132,37 +132,26 @@ public sealed class UpdateEventHandler : IRequestHandler<UpdateEventCommand, Eve
     /// <exception cref="UnauthorizedAccessException">Thrown when the event is owned by another user.</exception>
     public async Task<EventDto> Handle(UpdateEventCommand request, CancellationToken cancellationToken)
     {
-        var user = await _currentUser.GetOrCreateUserAsync(cancellationToken);
+        var userId = await _currentUser.GetCurrentUserIdAsync(cancellationToken);
 
         var entity = await _dbContext.Events
-            .Include(e => e.EventType)
             .FirstOrDefaultAsync(e => e.Id == request.Id, cancellationToken)
             ?? throw new KeyNotFoundException($"Event {request.Id} not found.");
 
-        if (entity.OrganizerId != user.Id)
+        if (entity.OrganizerId != userId)
         {
             throw new UnauthorizedAccessException("You do not have permission to modify this event.");
         }
 
-        // If the event type is changing, verify the new lookup row exists.
-        if (entity.EventTypeId != request.EventTypeId)
-        {
-            var typeExists = await _dbContext.EventTypes
-                .AsNoTracking()
-                .AnyAsync(t => t.Id == request.EventTypeId, cancellationToken);
+        // The event type comes from the in-memory catalog (mirrors the seeded table), so neither
+        // validating a new type nor building the response needs a round trip.
+        var eventType = EventTypeCatalog.Find(request.EventTypeId)
+            ?? throw new ValidationException(
+                [new FluentValidation.Results.ValidationFailure(
+                    nameof(request.EventTypeId),
+                    $"EventTypeId {request.EventTypeId} does not exist.")]);
 
-            if (!typeExists)
-            {
-                throw new ValidationException(
-                    [new FluentValidation.Results.ValidationFailure(
-                        nameof(request.EventTypeId),
-                        $"EventTypeId {request.EventTypeId} does not exist.")]);
-            }
-
-            entity.EventTypeId = request.EventTypeId;
-            // Force EF to reload the navigation property in the response.
-            entity.EventType = null!;
-        }
+        entity.EventTypeId = request.EventTypeId;
 
         entity.Title = request.Title.Trim();
         entity.OrganizerName = request.OrganizerName.Trim();
@@ -178,12 +167,6 @@ public sealed class UpdateEventHandler : IRequestHandler<UpdateEventCommand, Eve
 
         await _dbContext.SaveChangesAsync(cancellationToken);
 
-        // Reload the EventType navigation if the FK changed.
-        if (entity.EventType is null)
-        {
-            await _dbContext.Entry(entity).Reference(e => e.EventType).LoadAsync(cancellationToken);
-        }
-
         return new EventDto(
             entity.Id,
             entity.Title,
@@ -198,6 +181,6 @@ public sealed class UpdateEventHandler : IRequestHandler<UpdateEventCommand, Eve
             entity.IsCancelled,
             entity.CreatedAt,
             entity.UpdatedAt,
-            new EventTypeDto(entity.EventType.Id, entity.EventType.Name, entity.EventType.Icon));
+            new EventTypeDto(eventType.Id, eventType.Name, eventType.Icon));
     }
 }

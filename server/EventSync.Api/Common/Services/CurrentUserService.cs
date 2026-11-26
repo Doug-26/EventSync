@@ -4,6 +4,7 @@ using EventSync.Api.Data;
 using EventSync.Api.Data.Entities;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace EventSync.Api.Common.Services;
 
@@ -43,23 +44,38 @@ public interface ICurrentUserService
     /// </summary>
     /// <param name="cancellationToken">Cancellation token.</param>
     Task<User> GetOrCreateUserAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Returns the local user Id for the current Auth0 identity, provisioning the user on
+    /// first sign-in. The Auth0Id → Id mapping is cached in memory, so most calls make no
+    /// database round trip. Use this instead of <see cref="GetOrCreateUserAsync"/> when only
+    /// the Id is needed (ownership checks, filtering).
+    /// </summary>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    Task<Guid> GetCurrentUserIdAsync(CancellationToken cancellationToken = default);
 }
 
 /// <inheritdoc cref="ICurrentUserService"/>
 public sealed class CurrentUserService : ICurrentUserService
 {
+    /// <summary>How long an Auth0Id → user Id mapping stays cached after its last use.</summary>
+    private static readonly TimeSpan UserIdCacheSlidingExpiration = TimeSpan.FromMinutes(30);
+
     private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly AppDbContext _dbContext;
+    private readonly IMemoryCache _cache;
 
     /// <summary>
     /// Initializes a new instance of <see cref="CurrentUserService"/>.
     /// </summary>
     /// <param name="httpContextAccessor">Provides the current HTTP context (and its <see cref="ClaimsPrincipal"/>).</param>
     /// <param name="dbContext">EF Core context used for user provisioning.</param>
-    public CurrentUserService(IHttpContextAccessor httpContextAccessor, AppDbContext dbContext)
+    /// <param name="cache">Process-wide cache for the Auth0Id → user Id mapping.</param>
+    public CurrentUserService(IHttpContextAccessor httpContextAccessor, AppDbContext dbContext, IMemoryCache cache)
     {
         _httpContextAccessor = httpContextAccessor;
         _dbContext = dbContext;
+        _cache = cache;
     }
 
     private ClaimsPrincipal? Principal => _httpContextAccessor.HttpContext?.User;
@@ -115,5 +131,33 @@ public sealed class CurrentUserService : ICurrentUserService
         _dbContext.Users.Add(user);
         await _dbContext.SaveChangesAsync(cancellationToken);
         return user;
+    }
+
+    /// <inheritdoc/>
+    public async Task<Guid> GetCurrentUserIdAsync(CancellationToken cancellationToken = default)
+    {
+        var auth0Id = Auth0Id
+            ?? throw new UnauthorizedAccessException("No authenticated user on the current request.");
+
+        var cacheKey = $"user-id:{auth0Id}";
+        if (_cache.TryGetValue(cacheKey, out Guid cachedId))
+        {
+            return cachedId;
+        }
+
+        // Projection only — no entity materialized or tracked.
+        var userId = await _dbContext.Users
+            .AsNoTracking()
+            .Where(u => u.Auth0Id == auth0Id)
+            .Select(u => (Guid?)u.Id)
+            .FirstOrDefaultAsync(cancellationToken)
+            ?? (await GetOrCreateUserAsync(cancellationToken)).Id;
+
+        // Users are never deleted, so the mapping cannot go stale.
+        _cache.Set(cacheKey, userId, new MemoryCacheEntryOptions
+        {
+            SlidingExpiration = UserIdCacheSlidingExpiration,
+        });
+        return userId;
     }
 }
