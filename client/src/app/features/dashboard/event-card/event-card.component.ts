@@ -22,6 +22,8 @@ import { RelativeDatePipe } from '../../../shared/pipes/relative-date.pipe';
           [src]="coverSrc()!"
           [alt]="'Cover for ' + event().title"
           referrerpolicy="no-referrer"
+          loading="lazy"
+          decoding="async"
           class="h-28 w-full object-cover"
           (error)="$any($event).target.style.display='none'"
         />

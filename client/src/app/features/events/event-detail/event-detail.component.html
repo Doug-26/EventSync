@@ -37,6 +37,7 @@
         [src]="imgSrc"
         [alt]="'Cover image for ' + ev.title"
         referrerpolicy="no-referrer"
+        fetchpriority="high"
         class="mt-6 h-48 w-full rounded-xl object-cover shadow-sm sm:h-64"
         (error)="$any($event).target.style.display='none'"
       />
