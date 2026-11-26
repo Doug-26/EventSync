@@ -43,20 +43,10 @@ public class AppDbContext : DbContext
 
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
 
-        // Seed EventTypes lookup. Ids are stable so migrations remain deterministic.
+        // Seed EventTypes lookup from the in-code catalog (also served from memory by the API).
+        // Fresh copies so the shared catalog instances are never bound to a model.
         modelBuilder.Entity<EventType>().HasData(
-            new EventType { Id = 1, Name = "Seminar", Icon = "\uD83D\uDCD6" },          // 📖 Open Book
-            new EventType { Id = 2, Name = "Meeting", Icon = "\uD83D\uDCC5" },          // 📅 Calendar
-            new EventType { Id = 3, Name = "Gathering", Icon = "\uD83E\uDD1D" },        // 🤝 Handshake
-            new EventType { Id = 4, Name = "Wedding Anniversary", Icon = "\uD83D\uDC8D" }, // 💍 Ring
-            new EventType { Id = 5, Name = "Birthday", Icon = "\uD83C\uDF82" },         // 🎂 Birthday Cake
-            new EventType { Id = 6, Name = "Workshop", Icon = "\uD83D\uDEE0\uFE0F" },   // 🛠️ Hammer and Wrench
-            new EventType { Id = 7, Name = "Conference", Icon = "\uD83C\uDFE2" },       // 🏢 Office Building
-            new EventType { Id = 8, Name = "Other", Icon = "\u2728" },                  // ✨ Sparkles
-            new EventType { Id = 9, Name = "Church Anniversary", Icon = "\u26EA" },     // ⛪ Church
-            new EventType { Id = 10, Name = "Swimming Vacation", Icon = "\uD83C\uDFD6\uFE0F" }, // 🏖️ Beach with Umbrella
-            new EventType { Id = 11, Name = "Family Reunion", Icon = "\uD83D\uDC68\u200D\uD83D\uDC69\u200D\uD83D\uDC67\u200D\uD83D\uDC66" } // 👨‍👩‍👧‍👦 Family
-        );
+            EventTypeCatalog.All.Select(t => new EventType { Id = t.Id, Name = t.Name, Icon = t.Icon }));
 
     }
 }

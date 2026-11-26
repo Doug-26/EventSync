@@ -42,12 +42,15 @@ public sealed class GetEventByIdHandler : IRequestHandler<GetEventByIdQuery, Eve
     {
         var userId = await _currentUser.GetCurrentUserIdAsync(cancellationToken);
 
-        var ev = await _dbContext.Events
+        // Project the organizer's avatar instead of Include(Organizer): the detail view needs
+        // that one column, not the whole user row.
+        var row = await _dbContext.Events
             .AsNoTracking()
-            .Include(e => e.EventType)
-            .Include(e => e.Organizer)
-            .FirstOrDefaultAsync(e => e.Id == request.Id, cancellationToken)
+            .Where(e => e.Id == request.Id)
+            .Select(e => new { Event = e, e.EventType, OrganizerAvatarUrl = e.Organizer.AvatarUrl })
+            .FirstOrDefaultAsync(cancellationToken)
             ?? throw new KeyNotFoundException($"Event {request.Id} not found.");
+        var ev = row.Event;
 
         if (ev.OrganizerId != userId)
         {
@@ -92,8 +95,8 @@ public sealed class GetEventByIdHandler : IRequestHandler<GetEventByIdQuery, Eve
             ev.IsCancelled,
             ev.CreatedAt,
             ev.UpdatedAt,
-            new EventTypeDto(ev.EventType.Id, ev.EventType.Name, ev.EventType.Icon),
-            new OrganizerDto(ev.OrganizerName, ev.Organizer.AvatarUrl),
+            new EventTypeDto(row.EventType.Id, row.EventType.Name, row.EventType.Icon),
+            new OrganizerDto(ev.OrganizerName, row.OrganizerAvatarUrl),
             new RsvpSummaryDto(going, notGoing, maybe, total),
             linkDtos);
     }

@@ -136,10 +136,9 @@ public sealed class CreateEventHandler : IRequestHandler<CreateEventCommand, Eve
         }
 
         // Verify the supplied EventTypeId references a real lookup row before saving —
-        // EF will otherwise surface a less helpful FK constraint error.
-        var eventType = await _dbContext.EventTypes
-            .AsNoTracking()
-            .FirstOrDefaultAsync(t => t.Id == request.EventTypeId, cancellationToken)
+        // EF will otherwise surface a less helpful FK constraint error. Checked against the
+        // in-memory catalog, which mirrors the seeded table, to avoid a round trip.
+        var eventType = EventTypeCatalog.Find(request.EventTypeId)
             ?? throw new ValidationException(
                 [new FluentValidation.Results.ValidationFailure(
                     nameof(request.EventTypeId),

@@ -2,7 +2,6 @@
 using EventSync.Api.Data;
 using EventSync.Api.Features.Events.Common;
 using MediatR;
-using Microsoft.EntityFrameworkCore;
 
 namespace EventSync.Api.Features.EventTypes.GetEventTypes;
 
@@ -11,26 +10,20 @@ namespace EventSync.Api.Features.EventTypes.GetEventTypes;
 /// </summary>
 public sealed record GetEventTypesQuery() : IRequest<IReadOnlyList<EventTypeDto>>;
 
-/// <summary>Handler for <see cref="GetEventTypesQuery"/>.</summary>
+/// <summary>
+/// Handler for <see cref="GetEventTypesQuery"/>. Serves the static
+/// <see cref="EventTypeCatalog"/> from memory, so it never touches the database.
+/// </summary>
 public sealed class GetEventTypesHandler : IRequestHandler<GetEventTypesQuery, IReadOnlyList<EventTypeDto>>
 {
-    private readonly AppDbContext _dbContext;
-
-    /// <summary>Initializes a new instance of <see cref="GetEventTypesHandler"/>.</summary>
-    public GetEventTypesHandler(AppDbContext dbContext)
-    {
-        _dbContext = dbContext;
-    }
+    private static readonly IReadOnlyList<EventTypeDto> SortedTypes = EventTypeCatalog.All
+        .OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase)
+        .Select(t => new EventTypeDto(t.Id, t.Name, t.Icon))
+        .ToList();
 
     /// <inheritdoc/>
-    public async Task<IReadOnlyList<EventTypeDto>> Handle(
+    public Task<IReadOnlyList<EventTypeDto>> Handle(
         GetEventTypesQuery request,
-        CancellationToken cancellationToken)
-    {
-        return await _dbContext.EventTypes
-            .AsNoTracking()
-            .OrderBy(t => t.Name)
-            .Select(t => new EventTypeDto(t.Id, t.Name, t.Icon))
-            .ToListAsync(cancellationToken);
-    }
+        CancellationToken cancellationToken) =>
+        Task.FromResult(SortedTypes);
 }
