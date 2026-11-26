@@ -8,7 +8,7 @@ It is a portfolio project that runs on Azure **free tiers at $0/month**. Many de
 
 | Area | Tech |
 |---|---|
-| Frontend (`client/`) | Angular 21: standalone components, signals, OnPush, new control flow, reactive forms. Tailwind CSS 4. `@auth0/auth0-angular` (PKCE, refresh tokens in localStorage). Vitest is configured, but there are no specs yet. |
+| Frontend (`client/`) | Angular 22 (TypeScript 6): standalone components, signals, zoneless, OnPush (the v22 default), new control flow, reactive forms. Tailwind CSS 4. `@auth0/auth0-angular` (PKCE, refresh tokens in localStorage). Vitest is configured, but there are no specs yet. |
 | Backend (`server/EventSync.Api/`) | .NET 10 Minimal API. MediatR 14 vertical slices with a FluentValidation pipeline. EF Core 10 on SQL Server. Auth0 JWT bearer. Swagger in Development only. QRCoder. |
 | Tests (`server/EventSync.Api.Tests/`) | xUnit. Integration tests use `WebApplicationFactory` with EF InMemory. There are 39 tests. |
 | Prod hosting | Azure Static Web Apps Free (SPA), App Service **F1 Linux** (API), Azure SQL **Free Offer** (serverless DB), Auth0 free tenant |
@@ -77,8 +77,8 @@ There is no lint script or ESLint. Prettier settings live in `client/package.jso
 
 **Frontend** (see also `.claude/rules/angular-best-practices.md`, which loads automatically for `client/**`)
 - Use `inject()`, not constructor DI; `input()`/`input.required()`/`output()`; `computed()`; `@if`/`@for`.
-- Components are OnPush with the `app-` selector prefix, in `kebab-name/kebab-name.component.ts`.
-- Services are `providedIn: 'root'` and return Observables; signals hold UI state.
+- Components use the `app-` selector prefix, in `kebab-name/kebab-name.component.ts`. OnPush is the v22 default, so don't set `changeDetection`.
+- Services use `@Service()` and return Observables; signals hold UI state. The exception is `GlobalErrorHandler`, which keeps `@Injectable` because it is provided via `useClass`.
 - Interceptors and guards are functional. The interceptor order is `authInterceptor`, then `errorInterceptor`.
 - TS strict and `strictTemplates` are on. Styling is Tailwind utilities.
 - Accessibility matters: live regions, focus traps, a skip link, and an axe scan in dev builds.

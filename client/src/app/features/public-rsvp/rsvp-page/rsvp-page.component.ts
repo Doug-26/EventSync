@@ -2,7 +2,6 @@
 import { DatePipe } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import {
-  ChangeDetectionStrategy,
   Component,
   computed,
   effect,
@@ -58,7 +57,6 @@ const NOTE_MAX_LENGTH = 500;
 @Component({
   selector: 'app-rsvp-page',
   imports: [ReactiveFormsModule, DatePipe, LoadingSpinnerComponent],
-  changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './rsvp-page.component.html',
 })
 export class RsvpPageComponent {

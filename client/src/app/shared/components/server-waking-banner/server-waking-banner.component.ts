@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { Component, inject } from '@angular/core';
 
 import { ServerStatusService } from '../../../core/api/server-status.service';
 
@@ -11,7 +11,6 @@ import { ServerStatusService } from '../../../core/api/server-status.service';
  */
 @Component({
   selector: 'app-server-waking-banner',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div role="status" aria-live="polite">
       @if (status.waking()) {

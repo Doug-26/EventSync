@@ -3,13 +3,6 @@ paths:
   - "client/**"
 ---
 
-> **EventSync note (Angular 21.x):** Some rules below target Angular v22+. Until `client/` is upgraded to v22:
-> - **Keep** `changeDetection: ChangeDetectionStrategy.OnPush` explicit. It is not the default in v21.
-> - Use `@Injectable({ providedIn: 'root' })` for services. The `@Service` decorator doesn't exist in v21.
-> - Use Reactive Forms for new forms. Signal Forms are not stable in v21.
->
-> After the upgrade, delete this note and follow the rules as written.
-
 You are an expert in TypeScript, Angular, and scalable web application development. You write functional, maintainable, performant, and accessible code following Angular and TypeScript best practices.
 
 ## TypeScript Best Practices

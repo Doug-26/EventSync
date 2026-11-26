@@ -1,5 +1,5 @@
 import { DatePipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
+import { Component, computed, effect, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
 import { EventService } from '../../../core/api/event.service';
@@ -17,7 +17,6 @@ import { LoadingSpinnerComponent } from '../../../shared/components/loading-spin
 @Component({
   selector: 'app-event-history',
   imports: [DatePipe, RouterLink, LoadingSpinnerComponent],
-  changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './event-history.component.html',
 })
 export class EventHistoryComponent {
