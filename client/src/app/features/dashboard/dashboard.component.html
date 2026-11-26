@@ -9,13 +9,7 @@
         Here's a quick view of what's happening across your events.
       </p>
     </div>
-    <a
-      routerLink="/events/create"
-      class="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
-    >
-      <span aria-hidden="true">+</span>
-      <span>Create Event</span>
-    </a>
+    <app-create-event-button class="w-full sm:w-auto" />
   </header>
 
   @if (loading()) {
@@ -47,9 +41,9 @@
         <dt class="text-xs font-semibold uppercase tracking-wide text-emerald-700">Upcoming</dt>
         <dd class="mt-2 text-3xl font-bold text-emerald-900">{{ upcomingCount() }}</dd>
       </div>
-      <div class="rounded-lg border border-indigo-200 bg-indigo-50 p-5 shadow-sm">
-        <dt class="text-xs font-semibold uppercase tracking-wide text-indigo-700">RSVPs going</dt>
-        <dd class="mt-2 text-3xl font-bold text-indigo-900">{{ totalRsvpsGoing() }}</dd>
+      <div class="rounded-lg border border-brand-200 bg-brand-50 p-5 shadow-sm">
+        <dt class="text-xs font-semibold uppercase tracking-wide text-brand-700">RSVPs going</dt>
+        <dd class="mt-2 text-3xl font-bold text-brand-900">{{ totalRsvpsGoing() }}</dd>
       </div>
     </dl>
 
@@ -59,7 +53,7 @@
         <h2 id="upcoming-heading" class="text-lg font-semibold text-slate-900">Upcoming events</h2>
         <a
           routerLink="/events"
-          class="text-sm font-medium text-indigo-700 hover:underline"
+          class="text-sm font-medium text-brand-700 hover:underline"
         >
           View all
         </a>

@@ -25,7 +25,7 @@ public static class EventTypeCatalog
         new() { Id = 6, Name = "Workshop", Icon = "🛠️" },   // 🛠️ Hammer and Wrench
         new() { Id = 7, Name = "Conference", Icon = "🏢" },       // 🏢 Office Building
         new() { Id = 8, Name = "Other", Icon = "✨" },                  // ✨ Sparkles
-        new() { Id = 9, Name = "Church Anniversary", Icon = "⛪" },     // ⛪ Church
+        new() { Id = 9, Name = "Church Events", Icon = "⛪" },       // ⛪ Church
         new() { Id = 10, Name = "Swimming Vacation", Icon = "🏖️" }, // 🏖️ Beach with Umbrella
         new() { Id = 11, Name = "Family Reunion", Icon = "👨‍👩‍👧‍👦" }, // 👨‍👩‍👧‍👦 Family
     ];

@@ -12,6 +12,9 @@ import type {
   EventSummaryDto,
 } from '../../../core/models/event.model';
 import type { PagedResult } from '../../../core/models/paged-result.model';
+import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialog/confirm-dialog.component';
+import { CreateEventButtonComponent } from '../../../shared/components/create-event-button/create-event-button.component';
+import { ToastService } from '../../../shared/services/toast.service';
 
 type SortBy = 'date' | 'title';
 type SortDir = 'asc' | 'desc';
@@ -28,11 +31,18 @@ type SortDir = 'asc' | 'desc';
  */
 @Component({
   selector: 'app-event-list',
-  imports: [ReactiveFormsModule, RouterLink, DatePipe],
+  imports: [
+    ReactiveFormsModule,
+    RouterLink,
+    DatePipe,
+    CreateEventButtonComponent,
+    ConfirmDialogComponent,
+  ],
   templateUrl: './event-list.component.html',
 })
 export class EventListComponent {
   private readonly eventService = inject(EventService);
+  private readonly toasts = inject(ToastService);
 
   protected readonly searchControl = new FormControl<string>('', { nonNullable: true });
   protected readonly eventTypeFilter = signal<number | null>(null);
@@ -70,10 +80,17 @@ export class EventListComponent {
 
   protected readonly eventTypes = this.eventService.eventTypes;
 
-  /** Reactive paged result driven by `params()`. */
+  /** Bumped to refetch the current page with unchanged params (e.g. after a delete). */
+  private readonly reloadTick = signal(0);
+
+  /** Event awaiting delete confirmation, or null when no dialog is open. */
+  protected readonly pendingDelete = signal<EventSummaryDto | null>(null);
+  protected readonly deleting = signal(false);
+
+  /** Reactive paged result driven by `params()` (and `reloadTick`). */
   private readonly result = toSignal(
-    toObservable(this.params).pipe(
-      switchMap((p) =>
+    toObservable(computed(() => ({ ...this.params(), tick: this.reloadTick() }))).pipe(
+      switchMap(({ tick: _tick, ...p }) =>
         this.eventService.getEvents(p).pipe(
           catchError(() => of(null as PagedResult<EventSummaryDto> | null)),
         ),
@@ -115,12 +132,31 @@ export class EventListComponent {
     this.currentPage.set(page);
   }
 
+  /** Opens the shared confirm dialog for deleting `item`. */
   protected onDelete(item: EventSummaryDto): void {
-    const ok = confirm(`Delete "${item.title}"? This cannot be undone.`);
-    if (!ok) return;
+    this.pendingDelete.set(item);
+  }
+
+  protected cancelDelete(): void {
+    if (!this.deleting()) this.pendingDelete.set(null);
+  }
+
+  protected confirmDelete(): void {
+    const item = this.pendingDelete();
+    if (!item || this.deleting()) return;
+    this.deleting.set(true);
     this.eventService.deleteEvent(item.id).subscribe({
-      next: () =>
-        this.eventService.getEvents(this.params()).subscribe({ error: () => undefined }),
+      next: () => {
+        this.deleting.set(false);
+        this.pendingDelete.set(null);
+        this.toasts.success('Event deleted.');
+        this.reloadTick.update((n) => n + 1);
+      },
+      error: () => {
+        this.deleting.set(false);
+        this.pendingDelete.set(null);
+        this.toasts.error(this.eventService.error() ?? 'Could not delete event.');
+      },
     });
   }
 

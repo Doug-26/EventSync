@@ -15,6 +15,7 @@ import { EMPTY, catchError, switchMap } from 'rxjs';
 import { EventService } from '../../../core/api/event.service';
 import { environment } from '../../../../environments/environment';
 import type { UpdateEventRequest } from '../../../core/models/event.model';
+import { focusFirstInvalid } from '../../../shared/utils/focus-first-invalid';
 import {
   dateAfter,
   urlFormat,
@@ -131,9 +132,12 @@ export class EditEventComponent {
     }
   }
 
-  protected onSubmit(): void {
-    if (this.form.invalid || this.submitting()) {
+  /** Submits the form; when invalid, reveals every error and focuses the first one. */
+  protected onSubmit(formEl: HTMLFormElement): void {
+    if (this.submitting()) return;
+    if (this.form.invalid) {
       this.form.markAllAsTouched();
+      focusFirstInvalid(formEl);
       return;
     }
     const v = this.form.getRawValue();

@@ -82,6 +82,16 @@ public sealed class CreateInviteLinkHandler : IRequestHandler<CreateInviteLinkCo
             throw new UnauthorizedAccessException("You do not have permission to create invites for this event.");
         }
 
+        // A past event can't be RSVP'd to meaningfully, so it gets no new invite links.
+        // StartDate is a timezone-less local value, compared with DateTime.Now by convention.
+        if (ev.StartDate <= DateTime.Now)
+        {
+            throw new ValidationException(
+                [new FluentValidation.Results.ValidationFailure(
+                    string.Empty,
+                    "This event has already started, so new invite links can't be created.")]);
+        }
+
         var entity = new InviteLink
         {
             Id = Guid.NewGuid(),

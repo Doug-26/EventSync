@@ -26,7 +26,7 @@ import { AuthService } from '../../../core/auth/auth.service';
       <div class="text-center">
         <h1 id="callback-heading" class="sr-only">Completing sign-in</h1>
         <div
-          class="mx-auto h-12 w-12 animate-spin rounded-full border-4 border-slate-200 border-t-indigo-600"
+          class="mx-auto h-12 w-12 animate-spin rounded-full border-4 border-slate-200 border-t-brand-600"
           aria-hidden="true"
         ></div>
         <p

@@ -5,9 +5,11 @@ import { Router, RouterLink } from '@angular/router';
 
 import { environment } from '../../../../environments/environment';
 import {
+  type PublicEventDto,
   type RsvpConfirmationDto,
   RsvpStatus,
 } from '../../../core/models/rsvp.model';
+import { googleCalendarUrl } from '../../../shared/utils/calendar-links';
 import { StatusBadgeComponent, type StatusBadgeVariant } from '../../../shared/components/status-badge/status-badge.component';
 
 /** Display descriptor for the chosen status. */
@@ -55,10 +57,42 @@ export class RsvpConfirmationComponent {
     return null;
   });
 
+  /** The event as the RSVP page loaded it (navigation state), or null after a refresh. */
+  private readonly event = computed<PublicEventDto | null>(() => {
+    const fromNav = this.router.getCurrentNavigation()?.extras?.state as
+      | { event?: PublicEventDto }
+      | undefined;
+    if (fromNav?.event) return fromNav.event;
+    if (typeof history !== 'undefined') {
+      return (history.state as { event?: PublicEventDto } | null)?.event ?? null;
+    }
+    return null;
+  });
+
+  /** Google Calendar link, available when the event came along in navigation state. */
+  protected readonly googleCalendarLink = computed(() => {
+    const ev = this.event();
+    return ev ? googleCalendarUrl(ev) : null;
+  });
+
   /** Public iCalendar (.ics) download URL for this event's invite token. */
   protected readonly calendarUrl = computed(
     () => `${environment.apiUrl}/invite/${encodeURIComponent(this.token())}/calendar.ics`,
   );
+
+  /** Headline matched to the answer (a cheerful "you're going" would be wrong for a decline). */
+  protected readonly heading = computed(() => {
+    switch (this.confirmation()?.status) {
+      case RsvpStatus.Going:
+        return "You're going!";
+      case RsvpStatus.Maybe:
+        return 'Thanks, your maybe is noted';
+      case RsvpStatus.NotGoing:
+        return 'Thanks for letting them know';
+      default:
+        return 'RSVP recorded';
+    }
+  });
 
   /** Status badge text + colour for the confirmation card. */
   protected readonly statusDisplay = computed<StatusDisplay | null>(() => {
@@ -70,7 +104,7 @@ export class RsvpConfirmationComponent {
       case RsvpStatus.Maybe:
         return { text: 'Maybe', variant: 'warning' };
       case RsvpStatus.NotGoing:
-        return { text: 'Not going', variant: 'danger' };
+        return { text: 'Not going', variant: 'default' };
       default:
         return { text: 'Recorded', variant: 'default' };
     }

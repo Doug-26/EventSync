@@ -8,7 +8,7 @@
 
   @if (loading()) {
     <div role="status" aria-live="polite" class="flex items-center justify-center rounded-lg border border-slate-200 bg-white p-12 shadow-sm">
-      <span class="h-8 w-8 animate-spin rounded-full border-4 border-slate-200 border-t-indigo-600" aria-hidden="true"></span>
+      <span class="h-8 w-8 animate-spin rounded-full border-4 border-slate-200 border-t-brand-600" aria-hidden="true"></span>
       <span class="ml-3 text-sm text-slate-700">Loading event…</span>
     </div>
   } @else if (loadError(); as msg) {
@@ -16,7 +16,7 @@
       {{ msg }}
     </p>
   } @else {
-    <form [formGroup]="form" (ngSubmit)="onSubmit()" novalidate class="space-y-5 rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+    <form #formEl [formGroup]="form" (ngSubmit)="onSubmit(formEl)" novalidate class="space-y-5 rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
       <!-- Title -->
       <div>
         <label for="edit-title" class="block text-sm font-medium text-slate-800">
@@ -31,7 +31,7 @@
           aria-required="true"
           aria-describedby="edit-title-error"
           [attr.aria-invalid]="form.controls.title.touched && form.controls.title.invalid"
-          class="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+          class="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
         />
         @if (form.controls.title.touched && form.controls.title.invalid) {
           <p id="edit-title-error" role="alert" class="mt-1 text-xs text-rose-700">
@@ -55,7 +55,7 @@
           aria-required="true"
           [attr.aria-invalid]="form.controls.organizerName.touched && form.controls.organizerName.invalid"
           aria-describedby="edit-organizerName-error"
-          class="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+          class="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
         />
         @if (form.controls.organizerName.touched && form.controls.organizerName.invalid) {
           <p id="edit-organizerName-error" role="alert" class="mt-1 text-xs text-rose-700">
@@ -75,7 +75,7 @@
           maxlength="2000"
           aria-describedby="edit-description-error"
           [attr.aria-invalid]="form.controls.description.touched && form.controls.description.invalid"
-          class="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+          class="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
         ></textarea>
         @if (form.controls.description.touched && form.controls.description.errors?.['maxlength']) {
           <p id="edit-description-error" role="alert" class="mt-1 text-xs text-rose-700">
@@ -96,7 +96,7 @@
           aria-required="true"
           aria-describedby="edit-eventType-error"
           [attr.aria-invalid]="form.controls.eventTypeId.touched && form.controls.eventTypeId.invalid"
-          class="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+          class="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
         >
           <option [ngValue]="null">Select a type…</option>
           @for (t of eventTypes(); track t.id) {
@@ -120,7 +120,7 @@
           maxlength="300"
           aria-describedby="edit-location-error"
           [attr.aria-invalid]="form.controls.location.touched && form.controls.location.invalid"
-          class="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+          class="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
         />
         @if (form.controls.location.touched && form.controls.location.errors?.['maxlength']) {
           <p id="edit-location-error" role="alert" class="mt-1 text-xs text-rose-700">
@@ -137,7 +137,7 @@
             id="edit-isVirtual"
             type="checkbox"
             formControlName="isVirtual"
-            class="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+            class="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
           />
           <span class="text-sm text-slate-700">This is a virtual event</span>
         </label>
@@ -156,7 +156,7 @@
               aria-required="true"
               aria-describedby="edit-meetingUrl-error"
               [attr.aria-invalid]="form.controls.meetingUrl.touched && form.controls.meetingUrl.invalid"
-              class="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              class="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
             />
             @if (form.controls.meetingUrl.touched && form.controls.meetingUrl.invalid) {
               <p id="edit-meetingUrl-error" role="alert" class="mt-1 text-xs text-rose-700">
@@ -182,7 +182,7 @@
             aria-required="true"
             aria-describedby="edit-startDate-error"
             [attr.aria-invalid]="form.controls.startDate.touched && form.controls.startDate.invalid"
-            class="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            class="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
           />
           @if (form.controls.startDate.touched && form.controls.startDate.invalid) {
             <p id="edit-startDate-error" role="alert" class="mt-1 text-xs text-rose-700">
@@ -199,7 +199,7 @@
             formControlName="endDate"
             aria-describedby="edit-endDate-error"
             [attr.aria-invalid]="form.controls.endDate.touched && form.controls.endDate.invalid"
-            class="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            class="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
           />
           @if (form.controls.endDate.touched && form.controls.endDate.invalid) {
             <p id="edit-endDate-error" role="alert" class="mt-1 text-xs text-rose-700">
@@ -221,7 +221,7 @@
             />
             @if (uploading()) {
               <div class="absolute inset-0 flex items-center justify-center rounded-lg bg-white/70">
-                <span class="h-6 w-6 animate-spin rounded-full border-2 border-slate-200 border-t-indigo-600" aria-hidden="true"></span>
+                <span class="h-6 w-6 animate-spin rounded-full border-2 border-slate-200 border-t-brand-600" aria-hidden="true"></span>
                 <span class="sr-only">Uploading…</span>
               </div>
             }
@@ -237,7 +237,7 @@
         } @else {
           <label
             for="edit-coverImageFile"
-            class="mt-2 flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-slate-300 bg-slate-50 px-6 py-8 text-center transition hover:border-indigo-400 hover:bg-indigo-50"
+            class="mt-2 flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-slate-300 bg-slate-50 px-6 py-8 text-center transition hover:border-brand-500 hover:bg-brand-50"
             (dragover)="$event.preventDefault()"
           (drop)="$event.preventDefault(); onDrop($event)"
           >
@@ -268,7 +268,7 @@
           formControlName="maxAttendees"
           aria-describedby="edit-maxAttendees-error"
           [attr.aria-invalid]="form.controls.maxAttendees.touched && form.controls.maxAttendees.invalid"
-          class="mt-1 block w-32 rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+          class="mt-1 block w-32 rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
         />
         @if (form.controls.maxAttendees.touched && form.controls.maxAttendees.errors?.['min']) {
           <p id="edit-maxAttendees-error" role="alert" class="mt-1 text-xs text-rose-700">
@@ -292,9 +292,9 @@
         </a>
         <button
           type="submit"
-          [disabled]="form.invalid || submitting()"
+          [disabled]="submitting()"
           [attr.aria-busy]="submitting() ? 'true' : 'false'"
-          class="rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 disabled:cursor-not-allowed disabled:opacity-60"
+          class="rounded-md bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-brand-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 disabled:cursor-not-allowed disabled:opacity-60"
         >
           @if (submitting()) { Saving… } @else { Save changes }
         </button>

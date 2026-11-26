@@ -82,6 +82,7 @@ There is no lint script or ESLint. Prettier settings live in `client/package.jso
 - Services use `@Service()` and return Observables; signals hold UI state. The exception is `GlobalErrorHandler`, which keeps `@Injectable` because it is provided via `useClass`.
 - Interceptors and guards are functional. The interceptor order is `authInterceptor`, then `errorInterceptor`.
 - TS strict and `strictTemplates` are on. Styling is Tailwind utilities.
+- Brand colours are `brand-*` utilities from the `@theme` tokens in `client/src/styles.css` (a teal scale). Don't use raw palette colours such as `indigo-*` for brand UI. Focus rings use `brand-500` (`brand-400` is under 3:1 on white). "Not going" uses neutral slate; red is only for destructive actions and errors.
 - Accessibility matters: live regions, focus traps, a skip link, and an axe scan in dev builds.
 
 **General**

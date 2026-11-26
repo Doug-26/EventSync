@@ -10,23 +10,54 @@
 @source "./**/*.html";
 @source "./**/*.ts";
 
+/* Design tokens. Every brand colour in the templates is a `brand-*` utility, so
+   re-theming is a change to this block only. Contrast on white, measured:
+   brand-600 4.8:1 (white text on it too), brand-700 6.6:1, brand-500 3.5:1
+   (focus rings and other non-text UI only). No web font is loaded: `ui-rounded`
+   gives the rounded headings on Apple devices and falls back to the system
+   sans elsewhere, at zero bytes. */
+@theme {
+  --color-brand-50: #effafb;
+  --color-brand-100: #d6f1f4;
+  --color-brand-200: #b1e3e9;
+  --color-brand-300: #7dcfd9;
+  --color-brand-400: #41b2c1;
+  --color-brand-500: #2296a6;
+  --color-brand-600: #1a7d8c;
+  --color-brand-700: #176673;
+  --color-brand-800: #18535e;
+  --color-brand-900: #184650;
+  --color-brand-950: #0a2d35;
+
+  --font-display: ui-rounded, 'SF Pro Rounded', system-ui, -apple-system, 'Segoe UI', Roboto,
+    sans-serif;
+}
+
 /* Project-wide accessibility & base tweaks (mobile-first). Vanilla CSS only —
    @apply doesn't reliably round-trip through Angular's native Tailwind pipeline,
    so utility classes are applied directly in the HTML where needed. */
-html {
-  scroll-behavior: smooth;
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
 }
 
 body {
   min-height: 100vh;
-  background-color: #f8fafc; /* slate-50 */
+  background-color: #f2f9fa; /* brand-tinted page background */
   color: #0f172a;             /* slate-900 */
   -webkit-font-smoothing: antialiased;
 }
 
+h1,
+h2 {
+  font-family: var(--font-display);
+  letter-spacing: -0.01em;
+}
+
 /* Visible focus ring for all keyboard users (WCAG 2.4.7). */
 :where(a, button, [role='button'], input, select, textarea):focus-visible {
-  outline: 2px solid #4f46e5; /* indigo-600 */
+  outline: 2px solid var(--color-brand-600);
   outline-offset: 2px;
   border-radius: 0.25rem;
 }

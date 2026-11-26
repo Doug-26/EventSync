@@ -8,6 +8,7 @@ import type { EventSummaryDto } from '../../core/models/event.model';
 import { EmptyStateComponent } from '../../shared/components/empty-state/empty-state.component';
 import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner/loading-spinner.component';
 import { EventCardComponent } from './event-card/event-card.component';
+import { CreateEventButtonComponent } from '../../shared/components/create-event-button/create-event-button.component';
 
 /**
  * Personal home screen — at-a-glance stats + the next five upcoming events.
@@ -18,7 +19,7 @@ import { EventCardComponent } from './event-card/event-card.component';
  */
 @Component({
   selector: 'app-dashboard',
-  imports: [RouterLink, EventCardComponent, EmptyStateComponent, LoadingSpinnerComponent],
+  imports: [RouterLink, EventCardComponent, EmptyStateComponent, LoadingSpinnerComponent, CreateEventButtonComponent],
   templateUrl: './dashboard.component.html',
 })
 export class DashboardComponent {

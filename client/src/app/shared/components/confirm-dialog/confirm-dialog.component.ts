@@ -2,6 +2,7 @@
 import {
   AfterViewInit,
   Component,
+  OnDestroy,
   ElementRef,
   computed,
   inject,
@@ -19,8 +20,10 @@ export type ConfirmDialogVariant = 'danger' | 'primary';
  * Accessibility:
  * - `role="dialog"` + `aria-modal="true"` so assistive tech treats it as modal.
  * - `aria-labelledby` references the visible title heading.
- * - Focus is moved to the primary action on open and restored to the
- *   previously-focused element on close (handled by callers via `*` template).
+ * - On open, focus moves to the confirm button, or to the safe (cancel) button
+ *   for `danger` dialogs so an accidental Enter can't destroy anything.
+ * - On close (the caller's `@if` destroys the host), focus returns to the
+ *   element that was focused when the dialog opened.
  * - `Tab` / `Shift+Tab` are trapped between the two buttons.
  * - `Escape` (handled in `host`) cancels.
  *
@@ -35,7 +38,7 @@ export type ConfirmDialogVariant = 'danger' | 'primary';
     '(document:keydown.escape)': 'onCancel()',
   },
 })
-export class ConfirmDialogComponent implements AfterViewInit {
+export class ConfirmDialogComponent implements AfterViewInit, OnDestroy {
   readonly title = input.required<string>();
   readonly message = input.required<string>();
   readonly confirmText = input<string>('Confirm');
@@ -49,15 +52,28 @@ export class ConfirmDialogComponent implements AfterViewInit {
   private readonly confirmButton = viewChild<ElementRef<HTMLButtonElement>>('confirmBtn');
   private readonly cancelButton = viewChild<ElementRef<HTMLButtonElement>>('cancelBtn');
 
+  /** Element focused before the dialog opened; focus goes back to it on close. */
+  private readonly returnFocusTo = (this.host.nativeElement as HTMLElement).ownerDocument
+    ?.activeElement as HTMLElement | null | undefined;
+
   protected readonly confirmClass = computed(() =>
     this.variant() === 'danger'
       ? 'bg-rose-600 hover:bg-rose-700 focus-visible:ring-rose-400'
-      : 'bg-indigo-600 hover:bg-indigo-700 focus-visible:ring-indigo-400',
+      : 'bg-brand-600 hover:bg-brand-700 focus-visible:ring-brand-500',
   );
 
   /** Move focus into the dialog once it is rendered. */
   ngAfterViewInit(): void {
-    queueMicrotask(() => this.confirmButton()?.nativeElement.focus());
+    const target = this.variant() === 'danger' ? this.cancelButton() : this.confirmButton();
+    queueMicrotask(() => target?.nativeElement.focus());
+  }
+
+  /** Restore focus to the opener, if it is still in the document. */
+  ngOnDestroy(): void {
+    const el = this.returnFocusTo;
+    if (el && el !== el.ownerDocument.body && el.isConnected) {
+      queueMicrotask(() => el.focus());
+    }
   }
 
   /** Backdrop click — only dismisses when the click target IS the backdrop. */

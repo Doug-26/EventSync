@@ -6,21 +6,40 @@ import {
   inject,
   signal,
 } from '@angular/core';
-import { toSignal } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import {
   FormBuilder,
   ReactiveFormsModule,
   Validators,
 } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
+import { catchError, of } from 'rxjs';
 
 import { EventService } from '../../../core/api/event.service';
-import type { CreateEventRequest } from '../../../core/models/event.model';
+import { InviteLinkService } from '../../../core/api/invite-link.service';
+import { AuthService } from '../../../core/auth/auth.service';
+import { MAX_EVENTS_PER_USER, type CreateEventRequest } from '../../../core/models/event.model';
+import { focusFirstInvalid } from '../../../shared/utils/focus-first-invalid';
 import {
   dateAfter,
   futureDate,
   urlFormat,
 } from '../../../shared/validators/custom-validators';
+
+/** Default event length used to suggest an end time. */
+const DEFAULT_DURATION_HOURS = 3;
+
+/**
+ * Adds `hours` to a `datetime-local` value and returns another one
+ * (`YYYY-MM-DDTHH:mm`, local time), or '' when the input isn't a valid date.
+ */
+function addHoursLocal(value: string, hours: number): string {
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return '';
+  d.setHours(d.getHours() + hours);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
 
 /**
  * Form to create a new event. Reactive, typed, and accessible.
@@ -38,7 +57,8 @@ import {
  * Accessibility:
  * - Every control has an associated `<label for="…">`.
  * - Inline error messages are linked via `aria-describedby` and use `role="alert"`.
- * - The submit button is disabled while pending or invalid; live region announces save status.
+ * - Submitting an invalid form reveals every error and focuses the first invalid
+ *   field (the button is only disabled while saving or at the event cap).
  */
 @Component({
   selector: 'app-create-event',
@@ -48,7 +68,19 @@ import {
 export class CreateEventComponent {
   private readonly fb = inject(FormBuilder);
   private readonly eventService = inject(EventService);
+  private readonly inviteLinkService = inject(InviteLinkService);
+  private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
+
+  protected readonly maxEvents = MAX_EVENTS_PER_USER;
+
+  /** True when the user already has the maximum number of events (the server would reject). */
+  protected readonly atCap = computed(
+    () => (this.eventService.eventCount() ?? 0) >= MAX_EVENTS_PER_USER,
+  );
+
+  /** The end value we last filled in, so we only overwrite our own suggestion. */
+  private suggestedEnd = '';
 
   protected readonly eventTypes = this.eventService.eventTypes;
   protected readonly submitting = signal(false);
@@ -61,7 +93,11 @@ export class CreateEventComponent {
   /** Strictly typed form. */
   protected readonly form = this.fb.nonNullable.group({
     title: ['', [Validators.required, Validators.maxLength(200)]],
-    organizerName: ['', [Validators.required, Validators.maxLength(100)]],
+    // Pre-filled from the signed-in profile so "Hosted by" matches the account name.
+    organizerName: [
+      (this.auth.user()?.name ?? this.auth.user()?.nickname ?? '').slice(0, 100),
+      [Validators.required, Validators.maxLength(100)],
+    ],
     description: ['', [Validators.maxLength(2000)]],
     eventTypeId: this.fb.control<number | null>(null, [Validators.required]),
     location: ['', [Validators.maxLength(300)]],
@@ -94,11 +130,23 @@ export class CreateEventComponent {
     if (this.eventTypes().length === 0) {
       this.eventService.getEventTypes().subscribe({ error: () => undefined });
     }
+    this.eventService.ensureEventCount();
+
+    // Suggest an end time when the start changes, unless the user chose their own.
+    this.form.controls.startDate.valueChanges.pipe(takeUntilDestroyed()).subscribe((start) => {
+      const end = this.form.controls.endDate;
+      if (end.value !== '' && end.value !== this.suggestedEnd) return;
+      this.suggestedEnd = addHoursLocal(start, DEFAULT_DURATION_HOURS);
+      end.setValue(this.suggestedEnd);
+    });
   }
 
-  protected onSubmit(): void {
-    if (this.form.invalid || this.submitting()) {
+  /** Submits the form; when invalid, reveals every error and focuses the first one. */
+  protected onSubmit(formEl: HTMLFormElement): void {
+    if (this.submitting() || this.atCap()) return;
+    if (this.form.invalid) {
       this.form.markAllAsTouched();
+      focusFirstInvalid(formEl);
       return;
     }
     const v = this.form.getRawValue();
@@ -120,8 +168,16 @@ export class CreateEventComponent {
     this.submitError.set(null);
     this.eventService.createEvent(payload).subscribe({
       next: (created) => {
-        this.submitting.set(false);
-        this.router.navigate(['/events', created.id]);
+        // Every new event gets a ready-to-share invite link, so the next step is
+        // "share", not "find the generate button". If this fails the organizer
+        // can still generate one on the detail page.
+        this.inviteLinkService
+          .createInviteLink(created.id, { expiresAt: null, maxUses: null })
+          .pipe(catchError(() => of(null)))
+          .subscribe(() => {
+            this.submitting.set(false);
+            this.router.navigate(['/events', created.id], { queryParams: { created: 1 } });
+          });
       },
       error: () => {
         this.submitting.set(false);

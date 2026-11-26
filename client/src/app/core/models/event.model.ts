@@ -106,6 +106,12 @@ export interface CreateEventRequest {
 /** Body for `PUT /events/{id}`. Mirrors `CreateEventRequest`. */
 export type UpdateEventRequest = CreateEventRequest;
 
+/**
+ * Per-user event cap. Mirrors `CreateEventHandler.MaxEventsPerUser` on the
+ * server, which counts every non-deleted event (past and cancelled included).
+ */
+export const MAX_EVENTS_PER_USER = 3;
+
 /** Query parameters accepted by `GET /events`. */
 export interface EventListParams {
   readonly page?: number;

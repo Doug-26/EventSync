@@ -32,6 +32,6 @@ export class LoadingSpinnerComponent {
       md: 'h-8 w-8 border-4',
       lg: 'h-12 w-12 border-4',
     };
-    return `inline-block animate-spin rounded-full border-slate-200 border-t-indigo-600 ${sizes[this.size()]}`;
+    return `inline-block animate-spin rounded-full border-slate-200 border-t-brand-600 ${sizes[this.size()]}`;
   });
 }

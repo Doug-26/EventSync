@@ -180,7 +180,7 @@ namespace EventSync.Api.Migrations
                         {
                             Id = 9,
                             Icon = "⛪",
-                            Name = "Church Anniversary"
+                            Name = "Church Events"
                         },
                         new
                         {

@@ -31,7 +31,8 @@ const PAGE_SIZE = 20;
 const STATUS_BADGES: Readonly<Record<RsvpStatus, { text: string; variant: StatusBadgeVariant }>> = {
   [RsvpStatus.Going]: { text: 'Going', variant: 'success' },
   [RsvpStatus.Maybe]: { text: 'Maybe', variant: 'warning' },
-  [RsvpStatus.NotGoing]: { text: 'Not Going', variant: 'danger' },
+  // Neutral, not red: declining is a normal answer, not an error.
+  [RsvpStatus.NotGoing]: { text: 'Not going', variant: 'default' },
 };
 const PENDING_BADGE = { text: 'Pending', variant: 'default' } as const;
 
@@ -172,6 +173,36 @@ export class RsvpListComponent {
     this.currentPage.set(1);
   }
 
+  /**
+   * Arrow Left/Right/Home/End move between filter tabs and select them
+   * (WAI-ARIA tabs pattern, automatic activation). Inactive tabs have
+   * `tabindex="-1"`, so this is the only keyboard route to them.
+   */
+  protected onTabKeydown(event: KeyboardEvent, index: number): void {
+    const tabs = this.tabs();
+    let next: number;
+    switch (event.key) {
+      case 'ArrowRight':
+        next = (index + 1) % tabs.length;
+        break;
+      case 'ArrowLeft':
+        next = (index - 1 + tabs.length) % tabs.length;
+        break;
+      case 'Home':
+        next = 0;
+        break;
+      case 'End':
+        next = tabs.length - 1;
+        break;
+      default:
+        return;
+    }
+    event.preventDefault();
+    this.selectFilter(tabs[next].value);
+    const tablist = (event.currentTarget as HTMLElement).parentElement;
+    tablist?.querySelectorAll<HTMLElement>('[role="tab"]')[next]?.focus();
+  }
+
   /** Pagination handler. */
   protected goToPage(page: number): void {
     this.currentPage.set(page);
@@ -192,7 +223,8 @@ export class RsvpListComponent {
   protected scrollToInviteManager(): void {
     const target = document.getElementById('invite-links-heading');
     if (!target) return;
-    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    target.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' });
     // Move focus for keyboard / screen-reader users.
     target.setAttribute('tabindex', '-1');
     target.focus({ preventScroll: true });

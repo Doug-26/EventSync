@@ -25,11 +25,15 @@ import { AuthService } from '../../../core/auth/auth.service';
       aria-labelledby="login-heading"
     >
       <div
-        class="w-full max-w-md rounded-xl border border-slate-200 bg-white p-8 shadow-sm"
+        class="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-8 shadow-lg shadow-brand-900/5"
       >
         <div class="text-center">
-          <p class="text-3xl" aria-hidden="true">📅</p>
-          <h1 id="login-heading" class="mt-2 text-2xl font-semibold text-slate-900">
+          <span
+            class="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-50 text-3xl"
+            aria-hidden="true"
+            >📅</span
+          >
+          <h1 id="login-heading" class="mt-4 text-2xl font-bold text-slate-900">
             Sign in to EventSync
           </h1>
           <p class="mt-2 text-sm text-slate-600">
@@ -42,18 +46,22 @@ import { AuthService } from '../../../core/auth/auth.service';
           (click)="onSignIn()"
           [disabled]="isBusy()"
           [attr.aria-busy]="isBusy() ? 'true' : 'false'"
-          class="mt-8 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+          class="mt-8 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-4 text-base font-semibold text-white shadow-sm transition hover:bg-brand-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
         >
           @if (isBusy()) {
-            <span aria-hidden="true">…</span>
-            <span>Redirecting…</span>
+            <span>Getting things ready…</span>
           } @else {
-            <span aria-hidden="true">🔐</span>
-            <span>Sign in with Auth0</span>
+            <svg aria-hidden="true" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd" d="M10 1a4.5 4.5 0 0 0-4.5 4.5V9H5a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2h-.5V5.5A4.5 4.5 0 0 0 10 1Zm3 8V5.5a3 3 0 1 0-6 0V9h6Z" clip-rule="evenodd" />
+            </svg>
+            <span>Continue</span>
           }
         </button>
+        <p class="mt-3 text-center text-xs text-slate-600">
+          You'll sign in or create an account on our secure sign-in page.
+        </p>
 
-        <p class="mt-6 text-center text-xs text-slate-500">
+        <p class="mt-6 border-t border-slate-100 pt-4 text-center text-xs text-slate-600">
           By signing in you agree to the EventSync terms of service.
         </p>
       </div>

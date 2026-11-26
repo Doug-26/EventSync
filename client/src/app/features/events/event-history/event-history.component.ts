@@ -7,6 +7,7 @@ import type { EventSummaryDto } from '../../../core/models/event.model';
 import type { PagedResult } from '../../../core/models/paged-result.model';
 import { LoadingSpinnerComponent } from '../../../shared/components/loading-spinner/loading-spinner.component';
 import { type LoadState, loadOnChange } from '../../../shared/utils/load-on-change';
+import { CreateEventButtonComponent } from '../../../shared/components/create-event-button/create-event-button.component';
 
 /**
  * Organizer-facing archive of events whose start date has passed.
@@ -17,7 +18,7 @@ import { type LoadState, loadOnChange } from '../../../shared/utils/load-on-chan
  */
 @Component({
   selector: 'app-event-history',
-  imports: [DatePipe, RouterLink, LoadingSpinnerComponent],
+  imports: [DatePipe, RouterLink, LoadingSpinnerComponent, CreateEventButtonComponent],
   templateUrl: './event-history.component.html',
 })
 export class EventHistoryComponent {

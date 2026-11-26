@@ -32,7 +32,7 @@ import { RelativeDatePipe } from '../../../shared/pipes/relative-date.pipe';
         <div class="flex items-start justify-between gap-3">
           <a
             [routerLink]="['/events', event().id]"
-            class="text-base font-semibold text-indigo-700 hover:underline"
+            class="text-base font-semibold text-brand-700 hover:underline"
           >
             {{ event().title }}
           </a>

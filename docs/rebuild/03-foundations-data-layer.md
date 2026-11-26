@@ -491,7 +491,7 @@ public class AppDbContext : DbContext
             new EventType { Id = 6, Name = "Workshop",            Icon = "\uD83D\uDEE0\uFE0F" },
             new EventType { Id = 7, Name = "Conference",          Icon = "\uD83C\uDFA4" },
             new EventType { Id = 8, Name = "Other",               Icon = "\u2728" },
-            new EventType { Id = 9, Name = "Church Anniversary",  Icon = "\u26EA" }
+            new EventType { Id = 9, Name = "Church Events",  Icon = "\u26EA" }
         );
     }
 }

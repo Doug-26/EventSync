@@ -2,6 +2,8 @@
 import {
   Component,
   ElementRef,
+  Injector,
+  afterNextRender,
   computed,
   inject,
   signal,
@@ -9,26 +11,34 @@ import {
 } from '@angular/core';
 import { NgOptimizedImage } from '@angular/common';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { NavigationEnd, Router, RouterLink } from '@angular/router';
+import { NavigationEnd, Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { filter, map } from 'rxjs';
 
 import { AuthService } from '../../core/auth/auth.service';
 
+/** A top-level section link. */
+interface NavItem {
+  readonly label: string;
+  readonly link: string;
+  /** Match the URL exactly (so "My events" isn't active on /events/history). */
+  readonly exact: boolean;
+}
+
 /**
  * Top application header. Renders auth-aware navigation:
- * - Anonymous visitors see a "Sign in" link.
- * - Authenticated users see their avatar + display name with a dropdown menu
- *   containing "Sign out".
+ * - Anonymous visitors see a "Sign in" link (hidden on /login, which has its own button).
+ * - Signed-in users see the section links (Dashboard, My events, History) and an
+ *   account menu. On phones the section links move into that menu.
  *
  * Accessibility:
- * - The dropdown trigger uses `aria-haspopup="menu"` and `aria-expanded`.
- * - The menu uses `role="menu"` with `role="menuitem"` children.
- * - `Escape` closes the menu and returns focus to the trigger.
- * - Tab order is preserved (no positive tabindex used).
+ * - The menu follows the WAI-ARIA menu-button pattern: `aria-haspopup`/`aria-expanded`
+ *   on the trigger, focus moves to the first item on open, Arrow Up/Down/Home/End
+ *   move between items, and Escape closes the menu and returns focus to the trigger.
+ * - The active section link carries `aria-current="page"`.
  */
 @Component({
   selector: 'app-header',
-  imports: [RouterLink, NgOptimizedImage],
+  imports: [RouterLink, RouterLinkActive, NgOptimizedImage],
   templateUrl: './header.html',
   styleUrl: './header.css',
   host: {
@@ -39,18 +49,32 @@ import { AuthService } from '../../core/auth/auth.service';
 export class HeaderComponent {
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
+  private readonly injector = inject(Injector);
 
-  /** True when the current route is the public RSVP page. */
-  protected readonly isPublicPage = toSignal(
+  protected readonly navItems: readonly NavItem[] = [
+    { label: 'Dashboard', link: '/dashboard', exact: true },
+    { label: 'My events', link: '/events', exact: true },
+    { label: 'History', link: '/events/history', exact: true },
+  ];
+
+  /** Current URL, updated after every navigation. */
+  private readonly url = toSignal(
     this.router.events.pipe(
       filter((e): e is NavigationEnd => e instanceof NavigationEnd),
-      map((e) => e.urlAfterRedirects.startsWith('/rsvp')),
+      map((e) => e.urlAfterRedirects),
     ),
-    { initialValue: this.router.url.startsWith('/rsvp') },
+    { initialValue: this.router.url },
   );
+
+  /** True on the public RSVP pages, which show no navigation. */
+  protected readonly isPublicPage = computed(() => this.url().startsWith('/rsvp'));
+
+  /** True on /login, where the page's own button replaces the header's "Sign in". */
+  protected readonly isLoginPage = computed(() => this.url().startsWith('/login'));
 
   /** Trigger button — used to restore focus when the menu closes. */
   private readonly menuButton = viewChild<ElementRef<HTMLButtonElement>>('menuButton');
+  private readonly menu = viewChild<ElementRef<HTMLUListElement>>('menu');
 
   /** Menu open/closed state. */
   protected readonly isMenuOpen = signal(false);
@@ -66,9 +90,13 @@ export class HeaderComponent {
     return name?.charAt(0)?.toUpperCase() ?? '?';
   });
 
-  /** Toggle the dropdown. Focus stays on the button. */
+  /** Toggle the dropdown; on open, focus its first item. */
   protected toggleMenu(): void {
-    this.isMenuOpen.update((open) => !open);
+    const opening = !this.isMenuOpen();
+    this.isMenuOpen.set(opening);
+    if (opening) {
+      afterNextRender(() => this.menuItems()[0]?.focus(), { injector: this.injector });
+    }
   }
 
   /** Close the dropdown and restore focus to the trigger. */
@@ -78,6 +106,36 @@ export class HeaderComponent {
     }
     this.isMenuOpen.set(false);
     this.menuButton()?.nativeElement.focus();
+  }
+
+  /** Arrow Up/Down/Home/End move focus between the visible menu items. */
+  protected onMenuKeydown(event: KeyboardEvent): void {
+    const items = this.menuItems();
+    if (items.length === 0) return;
+    const current = items.indexOf(event.target as HTMLElement);
+    let next: number;
+    switch (event.key) {
+      case 'ArrowDown':
+        next = (current + 1) % items.length;
+        break;
+      case 'ArrowUp':
+        next = (current - 1 + items.length) % items.length;
+        break;
+      case 'Home':
+        next = 0;
+        break;
+      case 'End':
+        next = items.length - 1;
+        break;
+      case 'Tab':
+        // Tabbing out closes the menu, as in native menus.
+        this.isMenuOpen.set(false);
+        return;
+      default:
+        return;
+    }
+    event.preventDefault();
+    items[next].focus();
   }
 
   /** Click-outside handler: close the menu when clicking elsewhere. */
@@ -97,5 +155,14 @@ export class HeaderComponent {
   protected onSignOut(): void {
     this.isMenuOpen.set(false);
     this.auth.logout();
+  }
+
+  /** Menu items currently displayed (the section links are hidden from `sm` up). */
+  private menuItems(): HTMLElement[] {
+    const menu = this.menu()?.nativeElement;
+    if (!menu) return [];
+    return Array.from(menu.querySelectorAll<HTMLElement>('[role="menuitem"]')).filter(
+      (el) => el.getClientRects().length > 0,
+    );
   }
 }
