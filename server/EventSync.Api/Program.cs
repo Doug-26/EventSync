@@ -13,7 +13,6 @@ using EventSync.Api.Features.RSVPs;
 using EventSync.Api.Features.RSVPs.Common;
 using EventSync.Api.Features.Uploads;
 using FluentValidation;
-using FluentValidation.AspNetCore;
 using MediatR;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.HttpOverrides;
@@ -63,8 +62,8 @@ builder.Services.AddMediatR(cfg =>
     cfg.AddOpenBehavior(typeof(ValidationBehavior<,>));
 });
 
-// FluentValidation — automatic ASP.NET Core integration + assembly scanning.
-builder.Services.AddFluentValidationAutoValidation();
+// FluentValidation — assembly scanning. Validation itself runs in the MediatR
+// ValidationBehavior; MVC auto-validation is not used by Minimal APIs.
 builder.Services.AddValidatorsFromAssembly(typeof(Program).Assembly);
 
 // Current-user service requires HTTP context access.
@@ -215,23 +214,28 @@ builder.Services.AddRateLimiter(options =>
 });
 
 // Swagger / OpenAPI with Bearer security so the "Authorize" button appears.
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen(options =>
+// Registered in Development only (the UI is only mapped there), so production
+// startup skips building the API explorer and Swagger generator services.
+if (builder.Environment.IsDevelopment())
 {
-    options.SwaggerDoc("v1", new() { Title = "EventSync API v1", Version = "v1" });
-
-    options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    builder.Services.AddEndpointsApiExplorer();
+    builder.Services.AddSwaggerGen(options =>
     {
-        Name = "Authorization",
-        Description = "Paste **only** the JWT (without the 'Bearer ' prefix).",
-        In = ParameterLocation.Header,
-        Type = SecuritySchemeType.Http,
-        Scheme = "bearer",
-        BearerFormat = "JWT",
-    });
+        options.SwaggerDoc("v1", new() { Title = "EventSync API v1", Version = "v1" });
 
-    options.OperationFilter<SecurityRequirementsOperationFilter>(true, "Bearer");
-});
+        options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+        {
+            Name = "Authorization",
+            Description = "Paste **only** the JWT (without the 'Bearer ' prefix).",
+            In = ParameterLocation.Header,
+            Type = SecuritySchemeType.Http,
+            Scheme = "bearer",
+            BearerFormat = "JWT",
+        });
+
+        options.OperationFilter<SecurityRequirementsOperationFilter>(true, "Bearer");
+    });
+}
 
 var app = builder.Build();
 
