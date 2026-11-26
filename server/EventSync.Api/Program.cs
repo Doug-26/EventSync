@@ -68,6 +68,7 @@ builder.Services.AddValidatorsFromAssembly(typeof(Program).Assembly);
 
 // Current-user service requires HTTP context access.
 builder.Services.AddHttpContextAccessor();
+builder.Services.AddMemoryCache(); // Caches Auth0Id → user Id to skip a DB round trip per request.
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 
 // Strongly-typed configuration sections.

@@ -40,14 +40,14 @@ public sealed class ExportRsvpsHandler : IRequestHandler<ExportRsvpsQuery, RsvpC
     /// <exception cref="UnauthorizedAccessException">Event is owned by another user.</exception>
     public async Task<RsvpCsvExport> Handle(ExportRsvpsQuery request, CancellationToken cancellationToken)
     {
-        var user = await _currentUser.GetOrCreateUserAsync(cancellationToken);
+        var userId = await _currentUser.GetCurrentUserIdAsync(cancellationToken);
 
         var ev = await _dbContext.Events
             .AsNoTracking()
             .FirstOrDefaultAsync(e => e.Id == request.EventId, cancellationToken)
             ?? throw new KeyNotFoundException($"Event {request.EventId} not found.");
 
-        if (ev.OrganizerId != user.Id)
+        if (ev.OrganizerId != userId)
         {
             throw new UnauthorizedAccessException("You do not have access to this event's RSVPs.");
         }

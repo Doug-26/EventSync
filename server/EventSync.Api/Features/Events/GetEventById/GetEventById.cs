@@ -40,7 +40,7 @@ public sealed class GetEventByIdHandler : IRequestHandler<GetEventByIdQuery, Eve
     /// <exception cref="UnauthorizedAccessException">Thrown when the event exists but is not owned by the current user.</exception>
     public async Task<EventDetailDto> Handle(GetEventByIdQuery request, CancellationToken cancellationToken)
     {
-        var user = await _currentUser.GetOrCreateUserAsync(cancellationToken);
+        var userId = await _currentUser.GetCurrentUserIdAsync(cancellationToken);
 
         var ev = await _dbContext.Events
             .AsNoTracking()
@@ -49,7 +49,7 @@ public sealed class GetEventByIdHandler : IRequestHandler<GetEventByIdQuery, Eve
             .FirstOrDefaultAsync(e => e.Id == request.Id, cancellationToken)
             ?? throw new KeyNotFoundException($"Event {request.Id} not found.");
 
-        if (ev.OrganizerId != user.Id)
+        if (ev.OrganizerId != userId)
         {
             throw new UnauthorizedAccessException("You do not have access to this event.");
         }

@@ -119,13 +119,13 @@ public sealed class CreateEventHandler : IRequestHandler<CreateEventCommand, Eve
     /// <inheritdoc/>
     public async Task<EventDto> Handle(CreateEventCommand request, CancellationToken cancellationToken)
     {
-        var user = await _currentUser.GetOrCreateUserAsync(cancellationToken);
+        var userId = await _currentUser.GetCurrentUserIdAsync(cancellationToken);
 
         // Enforce the per-user event cap before touching any other state.
         // Counts only non-deleted rows so soft-deleted events free the slot.
         var activeEventCount = await _dbContext.Events
             .AsNoTracking()
-            .CountAsync(e => e.OrganizerId == user.Id && !e.IsDeleted, cancellationToken);
+            .CountAsync(e => e.OrganizerId == userId && !e.IsDeleted, cancellationToken);
 
         if (activeEventCount >= MaxEventsPerUser)
         {
@@ -149,7 +149,7 @@ public sealed class CreateEventHandler : IRequestHandler<CreateEventCommand, Eve
         var entity = new Event
         {
             Id = Guid.NewGuid(),
-            OrganizerId = user.Id,
+            OrganizerId = userId,
             EventTypeId = request.EventTypeId,
             Title = request.Title.Trim(),
             OrganizerName = request.OrganizerName.Trim(),

@@ -132,14 +132,14 @@ public sealed class UpdateEventHandler : IRequestHandler<UpdateEventCommand, Eve
     /// <exception cref="UnauthorizedAccessException">Thrown when the event is owned by another user.</exception>
     public async Task<EventDto> Handle(UpdateEventCommand request, CancellationToken cancellationToken)
     {
-        var user = await _currentUser.GetOrCreateUserAsync(cancellationToken);
+        var userId = await _currentUser.GetCurrentUserIdAsync(cancellationToken);
 
         var entity = await _dbContext.Events
             .Include(e => e.EventType)
             .FirstOrDefaultAsync(e => e.Id == request.Id, cancellationToken)
             ?? throw new KeyNotFoundException($"Event {request.Id} not found.");
 
-        if (entity.OrganizerId != user.Id)
+        if (entity.OrganizerId != userId)
         {
             throw new UnauthorizedAccessException("You do not have permission to modify this event.");
         }
