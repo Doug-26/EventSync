@@ -75,7 +75,7 @@ There is no lint script or ESLint. Prettier settings live in `client/package.jso
 - EF uses `EnableRetryOnFailure`, so **don't add manual transactions** (`BeginTransaction`/`TransactionScope`) unless you wrap them in `db.Database.CreateExecutionStrategy().ExecuteAsync(...)`.
 - Public members have XML doc comments.
 
-**Frontend**
+**Frontend** (see also `.claude/rules/angular-best-practices.md`, which loads automatically for `client/**`)
 - Use `inject()`, not constructor DI; `input()`/`input.required()`/`output()`; `computed()`; `@if`/`@for`.
 - Components are OnPush with the `app-` selector prefix, in `kebab-name/kebab-name.component.ts`.
 - Services are `providedIn: 'root'` and return Observables; signals hold UI state.
