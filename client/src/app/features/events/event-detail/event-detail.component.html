@@ -162,9 +162,10 @@
 
     <!-- Invite Links (Phase 4B) -->
     <div class="mt-8">
-      <app-invite-link-manager [eventId]="ev.id" />
+      <app-invite-link-manager [eventId]="ev.id" [initialLinks]="ev.inviteLinks" />
     </div>
-    <!-- RSVPs (Phase 4C) -->
+    <!-- RSVPs (Phase 4C). Not @defer-ed on purpose: the defer runtime adds ~2.7 kB gzip
+         to every route's initial bundle, more than it would save here. -->
     <div class="mt-4">
       <app-rsvp-list [eventId]="ev.id" />
     </div>

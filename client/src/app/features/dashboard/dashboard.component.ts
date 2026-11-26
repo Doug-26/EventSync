@@ -52,7 +52,6 @@ export class DashboardComponent {
       .slice(0, 5),
   );
 
-  protected trackById = (_: number, e: EventSummaryDto): string => e.id;
 
   constructor() {
     this.eventService

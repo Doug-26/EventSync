@@ -62,20 +62,7 @@
     </button>
   </form>
 
-  <!-- Loading state -->
-  @if (loading()) {
-    <div class="mt-6 flex justify-center py-6">
-      <app-loading-spinner label="Loading invite links" />
-    </div>
-  } @else if (errorMessage(); as err) {
-    <!-- Error state -->
-    <div
-      role="alert"
-      class="mt-6 rounded-md border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800"
-    >
-      {{ err }}
-    </div>
-  } @else if (isEmpty()) {
+  @if (isEmpty()) {
     <!-- Empty state -->
     <p class="mt-6 rounded-md border border-dashed border-slate-300 bg-slate-50 p-6 text-center text-sm text-slate-600">
       No invite links yet. Generate one to start sharing!
@@ -83,7 +70,8 @@
   } @else {
     <!-- Link list -->
     <ul class="mt-6 divide-y divide-slate-200" role="list">
-      @for (link of links(); track link.id) {
+      @for (row of rows(); track row.link.id) {
+        @let link = row.link;
         <li class="grid gap-2 py-4 sm:grid-cols-[minmax(0,1fr),auto] sm:items-center sm:gap-4">
           <div class="min-w-0">
             <div class="flex flex-wrap items-center gap-2">
@@ -91,19 +79,19 @@
                 class="block min-w-0 max-w-full truncate rounded bg-slate-100 px-2 py-1 font-mono text-xs text-slate-800"
                 [title]="link.url"
               >
-                {{ truncateUrl(link.url) }}
+                {{ row.displayUrl }}
               </code>
               <span
                 class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium"
-                [class]="statusClass(statusOf(link))"
+                [class]="row.statusClass"
               >
-                {{ statusLabel(statusOf(link)) }}
+                {{ row.statusLabel }}
               </span>
             </div>
             <dl class="mt-2 flex flex-wrap gap-x-6 gap-y-1 text-xs text-slate-600">
               <div class="flex gap-1">
                 <dt class="font-medium text-slate-500">Uses:</dt>
-                <dd>{{ usageDisplay(link) }}</dd>
+                <dd>{{ row.usage }}</dd>
               </div>
               <div class="flex gap-1">
                 <dt class="font-medium text-slate-500">Expires:</dt>
@@ -131,7 +119,7 @@
             >
               Copy
             </button>
-            @if (statusOf(link) === 'active') {
+            @if (row.status === 'active') {
               <button
                 type="button"
                 class="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
@@ -160,7 +148,7 @@
                 class="mt-2 flex flex-col items-center gap-2 rounded-md border border-slate-200 bg-slate-50 p-4"
               >
                 <img
-                  [src]="qrUrl(link)"
+                  [src]="row.qrUrl"
                   [alt]="'QR code linking to ' + link.url"
                   width="176"
                   height="176"
@@ -168,7 +156,7 @@
                 />
                 <p class="text-xs text-slate-500">Scan to open the RSVP page.</p>
                 <a
-                  [href]="qrUrl(link)"
+                  [href]="row.qrUrl"
                   download="invite-qr.png"
                   target="_blank"
                   rel="noopener"
